@@ -3,6 +3,33 @@ import { Home } from 'lucide-react';
 export function Footer() {
   return (
     <footer className="bg-slate-900 text-white relative overflow-hidden">
+      {/* Subtle Geometric Design at Top */}
+      <div className="absolute top-0 left-0 right-0 h-20 overflow-hidden">
+        <svg 
+          viewBox="0 0 1200 80" 
+          className="w-full h-full"
+          preserveAspectRatio="xMidYMid slice"
+        >
+          <defs>
+            <pattern id="geometricPattern" x="0" y="0" width="60" height="40" patternUnits="userSpaceOnUse">
+              <polygon points="30,5 45,15 30,25 15,15" fill="none" stroke="#64748b" strokeWidth="1" opacity="0.3"/>
+              <polygon points="0,15 15,25 0,35 -15,25" fill="none" stroke="#64748b" strokeWidth="1" opacity="0.2"/>
+              <polygon points="60,15 75,25 60,35 45,25" fill="none" stroke="#64748b" strokeWidth="1" opacity="0.2"/>
+            </pattern>
+            <linearGradient id="fadeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#64748b" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#64748b" stopOpacity="0.05" />
+            </linearGradient>
+          </defs>
+          
+          {/* Geometric pattern */}
+          <rect width="1200" height="80" fill="url(#geometricPattern)" />
+          
+          {/* Fade gradient */}
+          <rect width="1200" height="80" fill="url(#fadeGradient)" />
+        </svg>
+      </div>
+      
       {/* Background pattern for contractor feel */}
       <div className="absolute inset-0 opacity-5">
         <div 
@@ -12,7 +39,7 @@ export function Footer() {
           }}
         ></div>
       </div>
-      <div className="max-w-6xl mx-auto px-4 py-12">
+      <div className="max-w-6xl mx-auto px-4 py-12 relative z-10">
         <div className="text-center space-y-8 relative z-10">
           {/* Logo and Company Name */}
           <div className="flex items-center justify-center space-x-3">

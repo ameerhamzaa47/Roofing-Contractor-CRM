@@ -49,13 +49,13 @@ export function HowItWorks() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center px-4 py-2 bg-[#2563eb]/10 text-[#122E5F] rounded-full text-sm font-semibold mb-6">
+          <div className="inline-flex items-center px-4 py-2 bg-[#2563eb]/10 text-[#286BBD] rounded-full text-sm font-semibold mb-6">
             Simple 4-Step Process
           </div>
           <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-6">
             How It Works
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
             From signup to your first closed deal in as little as 24 hours. Our streamlined process gets you earning faster.
           </p>
         </div>
@@ -85,8 +85,8 @@ export function HowItWorks() {
                   {/* Details */}
                   <div className="space-y-2">
                     {step.details.map((detail, detailIndex) => (
-                      <div key={detailIndex} className="flex items-center space-x-2 text-sm text-[#2563eb]">
-                        <div className="w-1.5 h-1.5 bg-[#2563eb] rounded-full"></div>
+                      <div key={detailIndex} className="flex items-center space-x-2 text-sm text-[#286BBD]">
+                        <div className="w-1.5 h-1.5 bg-[#286BBD] rounded-full"></div>
                         <span className="font-medium">{detail}</span>
                       </div>
                     ))}

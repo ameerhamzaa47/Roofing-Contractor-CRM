@@ -47,14 +47,14 @@ export function LeadQualityGuarantee() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center px-4 py-2 bg-[#2563eb]/10 text-[#122E5F] rounded-full text-sm font-semibold mb-6">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center px-4 py-2 bg-[#2563eb]/10 text-[#286BBD] rounded-full text-sm font-semibold mb-6">
             Why Our Leads Convert at 78%
           </div>
           <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-6">
             Lead Quality Guarantee
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
             We guarantee every lead is insurance-approved, damage-confirmed, and ready to hire. 
             If you're not satisfied with your first 5 leads, we'll refund every penny.
           </p>
@@ -62,7 +62,7 @@ export function LeadQualityGuarantee() {
 
         {/* What Makes Our Leads Different */}
         <div className="text-center mb-16">
-          <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-8">
+          <h3 className="text-2xl lg:text-2xl font-bold text-gray-900 mb-8">
             What Makes Our Leads Different
           </h3>
           
@@ -186,7 +186,7 @@ export function LeadQualityGuarantee() {
                   </div>
 
                   {/* Content */}
-                  <h4 className="text-lg font-bold text-gray-900 mb-3">{process.title}</h4>
+                  <h4 className="text-lg font-bold text-[#286BBD] mb-1">{process.title}</h4>
                   <p className="text-gray-600 text-sm leading-relaxed">{process.description}</p>
                 </div>
 

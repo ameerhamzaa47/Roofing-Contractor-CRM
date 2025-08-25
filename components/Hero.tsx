@@ -39,7 +39,7 @@ export function Hero() {
           <div 
             className="w-full h-full bg-cover bg-center bg-no-repeat"
             style={{
-              backgroundImage: `url('https://images.pexels.com/photos/159306/construction-site-build-construction-work-159306.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop')`
+              backgroundImage: `url('/BG-Image.png')`
             }}
           ></div>
         </div>

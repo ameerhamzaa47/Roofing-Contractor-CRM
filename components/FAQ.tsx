@@ -70,7 +70,7 @@ export function FAQ() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#2563eb]/10 to-[#122E5F]/10 text-[#122E5F] rounded-full text-sm font-semibold mb-6 border border-[#2563eb]/20">
+          <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#2563eb]/10 to-[#122E5F]/10 text-[#286BBD] rounded-full text-sm font-semibold mb-6 border border-[#2563eb]/20">
             <HelpCircle className="h-4 w-4 mr-2" />
             Get All Your Questions Answered
           </div>

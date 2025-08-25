@@ -1,8 +1,12 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Shield, Award, Users, Clock, CheckCircle, Star, Target, Zap } from 'lucide-react';
+import { Shield, Award, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function WhyChooseUs() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   const reasons = [
     {
       icon: Shield,
@@ -21,111 +25,125 @@ export function WhyChooseUs() {
     }
   ];
 
-  const additionalFeatures = [
-    {
-      icon: Users,
-      title: 'Dedicated Support',
-      description: 'Personal account manager for enterprise clients'
-    },
-    {
-      icon: Clock,
-      title: '24/7 Availability',
-      description: 'Round-the-clock lead delivery and support'
-    },
-    {
-      icon: Target,
-      title: 'Targeted Leads',
-      description: 'Precisely matched to your service area and expertise'
-    }
-  ];
+  const nextSlide = () => {
+    setCurrentIndex((prevIndex) => {
+      const nextIndex = prevIndex + 1;
+      return nextIndex + 1 >= reasons.length ? prevIndex : nextIndex;
+    });
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prevIndex) => {
+      return prevIndex > 0 ? prevIndex - 1 : 0;
+    });
+  };
+
+  const visibleReasons = reasons.slice(currentIndex, currentIndex + 2);
 
   return (
-    <section className="py-8 lg:py-12 bg-white relative overflow-hidden">
+    <section className="py-16 lg:py-20 bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 relative overflow-hidden">
+      {/* Roofing Background Image */}
+      <div className="absolute inset-0 opacity-10">
+        <div 
+          className="w-full h-full bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `url('https://images.pexels.com/photos/2219024/pexels-photo-2219024.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop')`
+          }}
+        ></div>
+      </div>
+      
+      {/* Overlay gradient for better text readability */}
+      <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/60 to-white/80"></div>
+
       {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
+      <div className="absolute inset-0 opacity-50">
         <div 
           className="w-full h-full bg-repeat"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23122E5F' fill-opacity='0.1'%3E%3Cpath d='M0 0h80v80H0V0zm20 20v40h40V20H20zm20 35a15 15 0 1 1 0-30 15 15 0 0 1 0 30z' fill-rule='nonzero'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23122E5F' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
           }}
         ></div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-          {/* Left Side - Text Content */}
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-6">
-                Why Choose Us
-              </h2>
-              <p className="text-lg text-gray-600 leading-relaxed">
-                At Roof Claim Pros, we are dedicated to providing our contractors with the 
-                best possible service. With our years of experience, attention to detail, 
-                and commitment to quality lead generation and contractor success.
-              </p>
-            </div>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center px-4 py-2 bg-[#2563eb]/10 text-[#286BBD] rounded-full text-sm font-semibold mb-6">
+            Why Choose Our Platform
+          </div>
+          <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+            Why Choose Us
+          </h2>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            At Roof Claim Pros, we are dedicated to providing our contractors with the best possible service and results.
+          </p>
+        </div>
 
-            {/* Additional Features */}
-            <div className="space-y-4">
-              {additionalFeatures.map((feature, index) => (
-                <div key={index} className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-[#122E5F]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <feature.icon className="h-6 w-6 text-[#122E5F]" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">{feature.title}</h3>
-                    <p className="text-gray-600 text-sm">{feature.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Trust Indicators */}
-            <div className="bg-gradient-to-r from-[#122E5F]/5 to-[#2563eb]/5 rounded-xl p-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#122E5F] mb-1">2,000+</div>
-                  <div className="text-sm text-gray-600">Happy Contractors</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#122E5F] mb-1">78%</div>
-                  <div className="text-sm text-gray-600">Conversion Rate</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#122E5F] mb-1">$28K</div>
-                  <div className="text-sm text-gray-600">Avg Job Value</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#122E5F] mb-1">24hr</div>
-                  <div className="text-sm text-gray-600">Lead Delivery</div>
-                </div>
-              </div>
-            </div>
+        <div className="grid lg:grid-cols-12 gap-12 items-start">
+          {/* Left Side - Title and Description */}
+          <div className="lg:col-span-4 hidden lg:flex lg:flex-col lg:justify-center lg:h-full">
+            <h2 className="text-3xl lg:text-3xl font-bold text-gray-900">
+              Our Advantages
+            </h2>
+            <p className="text-lg text-gray-600 leading-relaxed text-justify mb-8">
+              With our years of experience, attention to detail, and commitment to quality lead generation, we provide contractors with the tools and support needed for success.
+            </p>
           </div>
 
-          {/* Right Side - Feature Cards */}
-          <div className="space-y-6">
-            {reasons.map((reason, index) => (
-              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white">
-                <CardContent className="p-6">
-                  <div className="flex items-start space-x-4">
-                    {/* Icon */}
-                    <div className="w-16 h-16 bg-gradient-to-br from-[#122E5F]/10 to-[#2563eb]/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-                      <reason.icon className="h-8 w-8 text-[#122E5F]" />
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900 mb-3">{reason.title}</h3>
-                      <p className="text-gray-600 leading-relaxed text-sm">{reason.description}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          {/* Right Side - Feature Cards Slider */}
+          <div className="lg:col-span-8 col-span-12">
+            <div className="relative">
+              {/* Feature Cards */}
+              <div className="grid md:grid-cols-2 gap-6 mb-6">
+                {visibleReasons.map((reason, index) => (
+                  <Card key={`${reason.title}-${currentIndex}-${index}`} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 h-full">
+                    <CardContent className="p-6 relative">
+                      {/* Icon */}
+                      <div className="w-12 h-12 bg-gradient-to-br from-[#122E5F]/10 to-[#2563eb]/10 rounded-xl flex items-center justify-center mb-4">
+                        <reason.icon className="h-6 w-6 text-[#122E5F]" />
+                      </div>
 
-            
+                      {/* Content */}
+                      <h3 className="text-lg font-bold text-gray-900 mb-4 pr-12">
+                        {reason.title}
+                      </h3>
+                      <p className="text-gray-700 leading-relaxed text-sm pr-12">
+                        {reason.description}
+                      </p>
+
+                      {/* Navigation Arrow inside card */}
+                      <div className="absolute top-4 right-4">
+                        {index === 0 ? (
+                          <button
+                            onClick={prevSlide}
+                            disabled={currentIndex === 0}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                              currentIndex === 0 
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                            }`}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={nextSlide}
+                            disabled={currentIndex + 1 >= reasons.length}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                              currentIndex + 1 >= reasons.length
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-[#122E5F] hover:bg-[#183B7A] text-white'
+                            }`}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

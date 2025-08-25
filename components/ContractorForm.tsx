@@ -631,7 +631,7 @@ export function ContractorForm() {
 
         {/* Guarantee */}
         <div className="mt-4 p-4 rounded-xl">
-          <div className="flex items-center space-x-3 mb-3">
+          <div className="flex items-center text-[#286BBD] space-x-3 mb-1">
             <CheckCircle className="h-4 w-4 " />
             <span className="text-sm font-bold ">100% Risk-Free Guarantee</span>
           </div>
