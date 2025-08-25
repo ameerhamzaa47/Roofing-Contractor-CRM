@@ -70,7 +70,7 @@ export function Hero() {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
           {/* Mobile Header - Only visible on mobile, shown first */}
           <div className="lg:hidden col-span-full text-center lg:mb-8 order-1 relative z-10">
-            <div className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-[#122E5F] font-bold rounded-full text-sm font-medium mb-3">
+            <div className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-[#122E5F] rounded-full text-sm font-medium mb-3">
               Join 2,000+ Successful Contractors
             </div>
             <h1 className="text-2xl font-bold text-white leading-tight mb-3">
