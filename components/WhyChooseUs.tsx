@@ -81,7 +81,7 @@ export function WhyChooseUs() {
 
         <div className="grid lg:grid-cols-12 gap-12 items-start">
           {/* Left Side - Title and Description */}
-          <div className="lg:col-span-4 hidden lg:flex lg:flex-col lg:justify-center lg:h-full">
+          <div className="hidden lg:flex lg:col-span-4 lg:flex-col lg:justify-center lg:h-full mb-8 lg:mb-0">
             <h2 className="text-3xl lg:text-3xl font-bold text-gray-900">
               Our Advantages
             </h2>
@@ -91,13 +91,13 @@ export function WhyChooseUs() {
           </div>
 
           {/* Right Side - Feature Cards Slider */}
-          <div className="lg:col-span-8 col-span-12">
-            <div className="relative">
+          <div className="lg:col-span-8 w-full">
+            <div className="relative w-full">
               {/* Feature Cards */}
-              <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 w-full">
                 {visibleReasons.map((reason, index) => (
-                  <Card key={`${reason.title}-${currentIndex}-${index}`} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 h-full">
-                    <CardContent className="p-6 relative">
+                  <Card key={`${reason.title}-${currentIndex}-${index}`} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 h-full w-full">
+                    <CardContent className="p-6 relative w-full">
                       {/* Icon */}
                       <div className="w-12 h-12 bg-gradient-to-br from-[#122E5F]/10 to-[#2563eb]/10 rounded-xl flex items-center justify-center mb-4">
                         <reason.icon className="h-6 w-6 text-[#122E5F]" />

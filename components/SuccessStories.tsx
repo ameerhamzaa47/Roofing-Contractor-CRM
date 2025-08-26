@@ -78,7 +78,7 @@ export function SuccessStories() {
 
         <div className="grid lg:grid-cols-12 gap-12 items-start">
           {/* Left Side - Title and Description */}
-          <div className="lg:col-span-4 hidden lg:flex lg:flex-col lg:justify-center lg:h-full">
+          <div className="hidden lg:flex lg:col-span-4 lg:flex-col lg:justify-center lg:h-full mb-8 lg:mb-0">
             <h2 className="text-3xl lg:text-3xl font-bold text-gray-900">
               Contractor Success
             </h2>
@@ -88,13 +88,13 @@ export function SuccessStories() {
           </div>
 
           {/* Right Side - Testimonial Slider */}
-          <div className="lg:col-span-8 col-span-12">
-            <div className="relative">
+          <div className="lg:col-span-8 w-full">
+            <div className="relative w-full">
               {/* Testimonial Cards */}
-              <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 w-full">
                 {visibleStories.map((story, index) => (
-                  <Card key={`${story.name}-${currentIndex}-${index}`} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 h-full">
-                   <CardContent className="p-6 relative">
+                  <Card key={`${story.name}-${currentIndex}-${index}`} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 h-full w-full">
+                   <CardContent className="p-6 relative w-full">
                       {/* Rating */}
                       <div className="flex items-center space-x-2 mb-4">
                         <Star className="h-5 w-5 text-[#286BBD] fill-current" />

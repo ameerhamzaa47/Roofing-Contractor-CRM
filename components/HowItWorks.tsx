@@ -82,15 +82,6 @@ export function HowItWorks() {
                   <h3 className="text-xl font-bold text-gray-900 mb-4">{step.title}</h3>
                   <p className="text-gray-600 mb-6 leading-relaxed flex-grow">{step.description}</p>
 
-                  {/* Details */}
-                  <div className="space-y-2">
-                    {step.details.map((detail, detailIndex) => (
-                      <div key={detailIndex} className="flex items-center space-x-2 text-sm text-[#286BBD]">
-                        <div className="w-1.5 h-1.5 bg-[#286BBD] rounded-full"></div>
-                        <span className="font-medium">{detail}</span>
-                      </div>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
 

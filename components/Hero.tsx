@@ -70,7 +70,7 @@ export function Hero() {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
           {/* Mobile Header - Only visible on mobile, shown first */}
           <div className="lg:hidden col-span-full text-center lg:mb-8 order-1 relative z-10">
-            <div className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-[#122E5F] rounded-full text-sm font-medium mb-3">
+            <div className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-[#122E5F] font-bold rounded-full text-sm font-medium mb-3">
               Join 2,000+ Successful Contractors
             </div>
             <h1 className="text-2xl font-bold text-white leading-tight mb-3">
@@ -106,10 +106,10 @@ export function Hero() {
             <div className="grid grid-cols-3 gap-6 mb-6">
               {stats.map((stat, index) => (
                 <div key={index} className="text-center">
-                  <div className="w-12 h-12 lg:w-16 lg:h-16 bg-[#2563eb]/20 backdrop-blur-sm border border-[#2563eb]/30 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <div className="w-12 h-12 lg:w-16 lg:h-16 bg-[#2563eb]/5 backdrop-blur-sm border border-[#2563eb]/50 rounded-xl flex items-center justify-center mx-auto mb-3">
                     <stat.icon className="h-6 w-6 lg:h-8 lg:w-8 text-[#2563eb]" />
                   </div>
-                  <div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-[#2563eb] mb-1">{stat.value}</div>
+                  <div className="text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-200 mb-1">{stat.value}</div>
                   <div className="text-sm lg:text-base text-gray-200 font-medium">{stat.label}</div>
                 </div>
               ))}

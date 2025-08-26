@@ -51,10 +51,10 @@ export function LeadQualityGuarantee() {
           <div className="inline-flex items-center px-4 py-2 bg-[#2563eb]/10 text-[#286BBD] rounded-full text-sm font-semibold mb-6">
             Why Our Leads Convert at 78%
           </div>
-          <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-2">
             Lead Quality Guarantee
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-justify text-gray-600 max-w-2xl mx-auto leading-relaxed">
             We guarantee every lead is insurance-approved, damage-confirmed, and ready to hire. 
             If you're not satisfied with your first 5 leads, we'll refund every penny.
           </p>

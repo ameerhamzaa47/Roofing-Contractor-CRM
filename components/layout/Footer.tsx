@@ -1,4 +1,5 @@
 import { Home } from 'lucide-react';
+import Image from 'next/image';
 
 export function Footer() {
   return (
@@ -39,23 +40,28 @@ export function Footer() {
           }}
         ></div>
       </div>
-      <div className="max-w-6xl mx-auto px-4 py-12 relative z-10">
-        <div className="text-center space-y-8 relative z-10">
+      <div className="max-w-6xl mx-auto px-4 py-8 relative z-10">
+        <div className="text-center relative z-10">
           {/* Logo and Company Name */}
-          <div className="flex items-center justify-center space-x-3">
-            <div className="w-12 h-12 bg-[#122E5F] rounded-xl flex items-center justify-center">
-              <Home className="h-6 w-6 text-white" />
+          <div className="flex justify-center">
+            <div className="relative w-96 h-16 sm:w-[500px] sm:h-10 lg:w-[600px] lg:h-16 mb-3">
+              <Image
+                src="/roofingF-logo.png"
+                alt="Roof Claim Pros Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
-            <span className="text-2xl font-bold">Roof Claim Pros</span>
           </div>
 
           {/* Tagline */}
-          <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+          <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-4">
             Connecting licensed roofing contractors with qualified insurance claim leads since 2020
           </p>
 
           {/* Trust Indicators */}
-          <div className="flex items-center justify-center space-x-8 text-gray-300">
+          <div className="flex items-center justify-center space-x-8 text-gray-300 mb-6">
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium">Licensed in All 50 States</span>
             </div>
@@ -70,7 +76,7 @@ export function Footer() {
           </div>
 
           {/* Copyright */}
-          <div className="pt-8 border-t border-gray-600">
+          <div className="pt-4 border-t border-gray-600">
             <p className="text-sm text-gray-400">
               © 2025 Roof Claim Pros. All rights reserved.
             </p>
