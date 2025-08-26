@@ -58,7 +58,7 @@ export function Footer() {
           </div>
 
         </div>
-          <div className="flex items-center justify-center space-x-2 lg:space-x-8 text-gray-800 mb-6">
+          <div className="flex items-center justify-center space-x-2 lg:space-x-4 text-gray-800 mb-6">
             <div className="flex items-center space-x-1">
               <span className="text-sm font-medium text-center">Licensed in All 50 States</span>
             </div>
