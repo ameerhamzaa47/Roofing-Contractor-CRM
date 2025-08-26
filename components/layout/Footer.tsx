@@ -1,4 +1,3 @@
-import { Home, Phone, Mail, MapPin, Shield, Award, Users } from 'lucide-react';
 import Image from 'next/image';
 
 export function Footer() {
