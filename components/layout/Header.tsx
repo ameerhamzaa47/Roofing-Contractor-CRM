@@ -33,30 +33,6 @@ export function Header() {
                 Licensed & Insured
               </span>
             </div>
-
-            {/* Auth Buttons */}
-            {user ? (
-              <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-600 capitalize">
-                  Welcome, {user}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={logout}
-                  className="text-[#286BBD]"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
-            ) : (
-              <Link href="/login">
-                <Button className="bg-[#122E5F] hover:bg-[#0f2347] text-white">
-                  Login
-                </Button>
-              </Link>
-            )}
           </div>
         </div>
       </div>
