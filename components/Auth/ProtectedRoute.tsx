@@ -22,13 +22,10 @@ export const ProtectedRoute = ({
     const loggedInUser = localStorage.getItem('loggedInUser')
     
     if (requireAuth && !loggedInUser) {
-      // User is not logged in but trying to access protected route
       router.push(redirectTo)
     } else if (!requireAuth && loggedInUser) {
-      // User is logged in but trying to access public route (like login/home)
       router.push('/dashboard')
     } else {
-      // User is in the correct state, render the content
       setShouldRender(true)
     }
     

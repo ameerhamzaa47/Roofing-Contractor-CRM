@@ -541,7 +541,7 @@ export function ContractorForm() {
                 <button
                 type="button"
                 onClick={() => router.push("/login")}
-                className="inline-flex items-center hover:underline text-sm font-bold text-[#122E5F] hover:text-[#183B7A] transition-colors focus:outline-none focus:ring-2 focus:ring-[#122E5F] bg-transparent border-none p-0"
+                className="inline-flex items-center hover:underline text-sm font-bold text-[#122E5F] hover:text-[#183B7A] transition-colors focus:outline-none bg-transparent border-none p-0"
                 >
                 Login
                 </button>
