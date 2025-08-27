@@ -6,6 +6,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { User, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
  
 
 // 1. Define validation schema
@@ -21,6 +22,7 @@ type FormData = {
 };
 
 export default function LoginModal() {
+  const router = useRouter();
   const { login } = useAuth();
 
   // 3. Setup react-hook-form
