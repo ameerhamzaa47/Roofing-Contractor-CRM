@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Star, Users, DollarSign, Clock, Shield, CheckCircle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Users, DollarSign, Clock, Shield, CheckCircle } from 'lucide-react';
+import { Element } from 'react-scroll';
 import { ContractorForm } from './ContractorForm';
+import path from 'path';
 
 export function Hero() {
   const stats = [
@@ -33,6 +34,7 @@ export function Hero() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      <Element name="free-inspection-form">
       {/* Background with construction/contractor imagery */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
         <div className="absolute inset-0 opacity-20">
@@ -75,7 +77,7 @@ export function Hero() {
             </div>
             <h1 className="text-2xl font-bold text-white leading-tight mb-3">
               Get Premium Insurance Claim
-              <span className="text-blue-600"> Leads That Actually Convert</span>
+              <span className="text-blue-200"> Leads That Actually Convert</span>
             </h1>
           </div>
 
@@ -95,7 +97,7 @@ export function Hero() {
             <div className="hidden lg:block mb-8">
               <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight mb-6">
                 Get Premium Insurance Claim
-                <span className="text-[#2563eb]"> Leads That Actually Convert</span>
+                <span className="text-blue-200"> Leads That Actually Convert</span>
               </h1>
               <p className="text-lg lg:text-xl text-gray-200 leading-relaxed">
                 Stop chasing leads and start closing deals. Our pre-qualified homeowners have approved insurance claims and are ready to hire immediately.
@@ -132,6 +134,7 @@ export function Hero() {
 
         </div>
       </div>
+      </Element>
     </div>
   );
 }

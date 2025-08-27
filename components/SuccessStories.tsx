@@ -1,8 +1,8 @@
 'use client';
-
 import React, { useState } from 'react';
+import { scroller } from 'react-scroll';
 import { Card, CardContent } from '@/components/ui/card';
-import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 
 export function SuccessStories() {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -61,7 +61,7 @@ export function SuccessStories() {
   const visibleStories = stories.slice(currentIndex, currentIndex + 2);
 
   return (
-    <section className="py-16 lg:py-20 bg-gray-100 relative overflow-hidden">
+    <section className="py-8 lg:py-10 bg-gray-100 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
         <div className="text-center mb-16">
@@ -94,7 +94,7 @@ export function SuccessStories() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 w-full">
                 {visibleStories.map((story, index) => (
                   <Card key={`${story.name}-${currentIndex}-${index}`} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 h-full w-full">
-                   <CardContent className="p-6 relative w-full">
+                    <CardContent className="p-6 relative w-full">
                       {/* Rating */}
                       <div className="flex items-center space-x-2 mb-4">
                         <Star className="h-5 w-5 text-[#286BBD] fill-current" />
@@ -102,7 +102,7 @@ export function SuccessStories() {
                       </div>
 
                       {/* Testimonial */}
-                     <p className="text-gray-700 leading-relaxed mb-6 text-sm pr-12">
+                      <p className="text-gray-700 leading-relaxed mb-6 text-sm pr-12">
                         "{story.testimonial}"
                       </p>
 
@@ -113,34 +113,32 @@ export function SuccessStories() {
                         <div className="text-xs text-gray-500">{story.location}</div>
                       </div>
 
-                     {/* Navigation Arrow inside card */}
-                     <div className="absolute top-4 right-4">
-                       {index === 0 ? (
-                         <button
-                           onClick={prevSlide}
-                           disabled={currentIndex === 0}
-                           className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                             currentIndex === 0 
-                               ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                               : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                           }`}
-                         >
-                           <ChevronLeft className="h-4 w-4" />
-                         </button>
-                       ) : (
-                         <button
-                           onClick={nextSlide}
-                           disabled={currentIndex + 1 >= stories.length}
-                           className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                             currentIndex + 1 >= stories.length
-                               ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                               : 'bg-[#122E5F] hover:bg-[#183B7A] text-white'
-                           }`}
-                         >
-                           <ChevronRight className="h-4 w-4" />
-                         </button>
-                       )}
-                     </div>
+                      {/* Navigation Arrow inside card */}
+                      <div className="absolute top-4 right-4">
+                        {index === 0 ? (
+                          <button
+                            onClick={prevSlide}
+                            disabled={currentIndex === 0}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${currentIndex === 0
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                              }`}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={nextSlide}
+                            disabled={currentIndex + 1 >= stories.length}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${currentIndex + 1 >= stories.length
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-[#122E5F] hover:bg-[#183B7A] text-white'
+                              }`}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -148,6 +146,20 @@ export function SuccessStories() {
             </div>
           </div>
         </div>
+      </div>
+      <div className="flex justify-center mt-10">
+        <button
+          onClick={() =>
+            scroller.scrollTo('free-inspection-form', {
+              duration: 800,
+              delay: 0,
+              smooth: 'easeInOutQuart'
+            })
+          }
+          className="flex items-center px-6 py-3 bg-[#122E5F] text-white rounded-full shadow-lg hover:bg-[#183B7A] transition-all duration-300 font-semibold text-lg">
+          <ArrowRight className="mr-2" />
+          Sign Up Now
+        </button>
       </div>
     </section>
   );

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -534,6 +535,17 @@ export function ContractorForm() {
               >
                 Continue to Account Setup
               </Button>
+
+              <div className="mt-6 flex items-center justify-center">
+              <span className="text-sm text-gray-700 mr-2">Already have an account?</span>
+                <button
+                type="button"
+                onClick={() => router.push("/login")}
+                className="inline-flex items-center hover:underline text-sm font-bold text-[#122E5F] hover:text-[#183B7A] transition-colors focus:outline-none focus:ring-2 focus:ring-[#122E5F] bg-transparent border-none p-0"
+                >
+                Login
+                </button>
+              </div>
 
               <p className="text-xs text-gray-500 text-center">
                 By continuing, you agree to receive calls and texts about premium leads.

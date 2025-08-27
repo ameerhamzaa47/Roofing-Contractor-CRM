@@ -1,4 +1,6 @@
+'use client'
 import React from 'react';
+import { scroller } from 'react-scroll';
 import { Card, CardContent } from '@/components/ui/card';
 import { Shield, Clock, DollarSign, Star, ArrowRight } from 'lucide-react';
 
@@ -202,7 +204,20 @@ export function LeadQualityGuarantee() {
         </div>
 
         {/* Money Back Guarantee */}
-       
+       <div className="flex justify-center mt-10">
+               <button
+               onClick={() =>
+                scroller.scrollTo('free-inspection-form', {
+                  duration: 800,
+                  delay: 0,
+                  smooth: 'easeInOutQuart'
+                })
+              }
+               className="flex items-center px-6 py-3 bg-[#122E5F] text-white rounded-full shadow-lg hover:bg-[#183B7A] transition-all duration-300 font-semibold text-lg">
+                 <ArrowRight className="mr-2" />
+                 Sign Up Now
+               </button>
+             </div>
       </div>
     </section>
   );
