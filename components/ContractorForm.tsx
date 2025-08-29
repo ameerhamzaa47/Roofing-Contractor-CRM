@@ -297,7 +297,8 @@ export function ContractorForm() {
         name: formData.fullName,
         email: formData.emailAddress
       });
-      router.push(`/crmContractor?${params.toString()}`);
+      router.push(`/thank-you`);
+      // router.push(`/crmContractor?${params.toString()}`);
     } else {
       // Scroll to first error field
       const firstErrorField = document.querySelector('.border-red-500');

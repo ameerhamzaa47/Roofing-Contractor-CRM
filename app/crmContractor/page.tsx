@@ -36,7 +36,7 @@ export default function CrmContractor() {
 
             {/* Success Message */}
             <h2 className="text-lg font-bold text-[#2563eb] mb-2">
-              Account Created Successfully!
+              Successfully!
             </h2>
             <p className="text-sm text-gray-600 mb-4">
               Welcome to the Roof Claim Pros contractor network{userInfo.fullName ? `, ${userInfo.fullName}` : ''}!
