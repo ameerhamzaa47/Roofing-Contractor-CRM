@@ -2,8 +2,17 @@
 
 import { CheckCircle, LogIn } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 export default function ThankYouPage() {
+    const [userInfo, setUserInfo] = useState<any>(null);
     const router = useRouter();
+    useEffect(() => {
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            const userInfoObj = JSON.parse(userInfo);
+            setUserInfo(userInfoObj);
+        }
+    }, [])
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-100 via-indigo-100 to-slate-200 flex items-center justify-center p-4">
@@ -25,17 +34,16 @@ export default function ThankYouPage() {
                         <circle cx="90" cy="30" r="4" fill="#818cf8" />
                     </svg>
                 </div>
-
                 {/* Registration Success Message */}
                 <div className="relative z-10 text-center mb-10">
                     <div className="w-20 h-20 bg-gradient-to-br from-green-200 via-green-100 to-green-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg animate-bounce-slow">
                         <CheckCircle className="h-10 w-10 text-green-600 drop-shadow-lg" />
                     </div>
                     <h1 className="text-3xl font-extrabold text-gray-900 mb-3 tracking-tight drop-shadow-sm">
-                        Welcome to the Pros!
+                        Welcome {userInfo?.fullName ? `${userInfo?.fullName}!` : 'to the Pros!'}
                     </h1>
                     <p className="text-lg text-gray-700 mb-2 font-medium">
-                        Your account has been created Successfully.
+                        Your account has been created successfully.
                     </p>
                     <p className="text-gray-500 mb-2">
                         We're excited to have you join <span className="font-semibold text-[#286BBD]">Roof Claim Pros</span>.<br />
@@ -57,7 +65,7 @@ export default function ThankYouPage() {
                     <span className="text-xs text-gray-400">You can now log in with your new credentials.</span>
                 </div>
 
-            
+
             </div>
             <style jsx>{`
                 .animate-bounce-slow {

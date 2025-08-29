@@ -297,6 +297,7 @@ export function ContractorForm() {
         name: formData.fullName,
         email: formData.emailAddress
       });
+      localStorage.setItem('userInfo', JSON.stringify(formData));
       router.push(`/thank-you`);
       // router.push(`/crmContractor?${params.toString()}`);
     } else {
