@@ -3,12 +3,13 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { CheckCircle, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { CheckCircle, LogOut, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 export function Header() {
   const { user, logout } = useAuth();
+  const router = useRouter();
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -25,15 +26,16 @@ export function Header() {
                 </div>
           </Link>
 
-          <div className="flex items-center space-x-4">
-            {/* Licensed Badge */}
-            <div className="flex items-center space-x-2 bg-[#122E5F] px-4 py-2 rounded-full border border-[#122E5F] shadow-sm hover:shadow-md transition-all duration-300">
-              <CheckCircle className="h-4 w-4 text-white" />
-              <span className="text-xs font-medium text-white">
-                Licensed & Insured
-              </span>
+          <div className="hidden md:flex items-center">
+              {/* Contractor Login */}
+              <button
+                onClick={() => router.push('/login')}
+                className="flex items-center space-x-2 bg-[#122E5F] hover:bg-[#0f2347] text-white px-6 py-2.5 rounded-lg transition-all duration-300 font-medium shadow-sm"
+              >
+                <User className="h-4 w-4" />
+                <span className="text-sm font-semibold">Login</span>
+              </button>
             </div>
-          </div>
         </div>
       </div>
     </nav>

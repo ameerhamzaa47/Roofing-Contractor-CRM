@@ -156,7 +156,7 @@ export function SuccessStories() {
               smooth: 'easeInOutQuart'
             })
           }
-          className="flex items-center px-6 py-3 bg-[#122E5F] text-white rounded-full shadow-lg hover:bg-[#183B7A] transition-all duration-300 font-semibold text-lg">
+          className="flex items-center px-6 py-3 bg-[#DAFF59] text-black rounded-full shadow-lg hover:bg-[#d2fa35] transition-all duration-300 font-semibold text-lg">
           <ArrowRight className="mr-2" />
           Sign Up Now
         </button>
