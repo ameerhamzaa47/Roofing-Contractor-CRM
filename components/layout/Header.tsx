@@ -8,8 +8,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 export function Header() {
-  const { user, logout } = useAuth();
   const router = useRouter();
+  const { user, logout } = useAuth();
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -26,7 +26,7 @@ export function Header() {
                 </div>
           </Link>
 
-          <div className="hidden md:flex items-center">
+          <div className="flex items-center">
               {/* Contractor Login */}
               <button
                 onClick={() => router.push('/login')}
