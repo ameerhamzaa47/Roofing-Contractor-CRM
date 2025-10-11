@@ -1,12 +1,12 @@
 "use client";
 
 import { ProtectedRoute } from '@/components/Auth/ProtectedRoute';
-import { DashBoard } from '@/components/dashboard/menuTabs';
+import { Dashboard } from '@/components/admin/menuTabs/Index';
 
-export default function Dashboard() {
+export default function Admin() {
   return (
     <ProtectedRoute requireAuth={true}>
-      <DashBoard />
+      <Dashboard />
     </ProtectedRoute>
   );
 }

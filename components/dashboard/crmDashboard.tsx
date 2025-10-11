@@ -1,38 +1,70 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { Home, Users, FileText, Calendar, Settings, BarChart3, MessageSquare, Menu, X, User, Search, LogOut } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { useAuth } from '@/hooks/useAuth'
+import React, { useState } from "react";
+import {
+  Home,
+  Users,
+  Settings,
+  BarChart3,
+  Menu,
+  X,
+  User,
+  LogOut,
+  UserPlus,
+} from "lucide-react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { CrmDashboardProps } from "@/types/DashboardTypes";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
-const CrmDashboard = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, logout } = useAuth()
+
+
+const CrmDashboard = ({ children }: CrmDashboardProps) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  const { user, getCurrentUserFullName, logout, loading } = useAuth();
+  const currentUserFullName = getCurrentUserFullName();
+
+  const getActiveTab = () => {
+    const pathSegments = pathname.split("/");
+    const section = pathSegments[pathSegments.length - 1];
+
+    if (pathname === "/dashboard" || section === "dashboard") {
+      return "Dashboard";
+    }
+
+    switch (section) {
+      case "crm":
+        return "CRM";
+      case "leads":
+        return "Leads";
+      case "settings":
+        return "Settings";
+      case "teams":
+        return "Teams";
+      default:
+        return "Dashboard";
+    }
+  };
+
+  const activeTab = getActiveTab();
 
   const menuItems = [
-    { icon: Home, label: 'Dashboard', active: true },
-    { icon: Users, label: 'Clients', active: false },
-    { icon: FileText, label: 'Projects', active: false },
-    { icon: Calendar, label: 'Schedule', active: false },
-    { icon: MessageSquare, label: 'Messages', active: false },
-    { icon: BarChart3, label: 'Analytics', active: false },
-    { icon: Settings, label: 'Settings', active: false },
-    { icon: FileText, label: 'Reports', active: false },
-    { icon: Users, label: 'Team', active: false },
-    { icon: Calendar, label: 'Calendar', active: false },
-    { icon: MessageSquare, label: 'Notifications', active: false },
-    { icon: Settings, label: 'Preferences', active: false },
-  ]
+    { icon: Home, label: "Dashboard", path: "/dashboard" },
+    { icon: BarChart3, label: "CRM", path: "/dashboard/crm" },
+    { icon: Users, label: "Leads", path: "/dashboard/leads" },
+    { icon: Settings, label: "Settings", path: "/dashboard/settings" },
+    { icon: UserPlus, label: "Teams", path: "/dashboard/teams" },
+  ];
 
   const handleLogout = () => {
-    logout()
-  }
+    logout();
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -42,53 +74,56 @@ const CrmDashboard = () => {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}>
-        <div className="flex items-center justify-between p-5 border-b">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center">
-              {/* <span className="text-white font-bold text-sm">R</span> */}
-              <Home className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-900">Roofing CRM</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="lg:hidden"
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:inset-0 lg:flex lg:flex-col lg:h-full ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 flex-shrink-0">
+          <Image
+            src="/roofing-logo.png"
+            alt="logo"
+            width={160}
+            height={160}
+            className="object-contain cursor-pointer mt-2"
+          />
+          <button
             onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
           >
-            <X className="h-5 w-5 text-[#286BBD]" />
-          </Button>
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        <div className="flex flex-col h-[calc(100vh-120px)]">
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto min-h-0">
+        <div className="flex flex-col flex-1 min-h-0">
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {menuItems.map((item, index) => (
-              <button
+              <Link
                 key={index}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${item.active
-                  ? 'bg-blue-50 text-[#286BBD] border-r-2 border-[#286BBD]'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
+                href={item.path}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                  activeTab === item.label
+                    ? "bg-blue-50 text-[#286BBD] border-r-2 border-[#286BBD]"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
               >
                 <item.icon className="h-5 w-5" />
                 <span className="font-medium">{item.label}</span>
-              </button>
+              </Link>
             ))}
           </nav>
 
-          <div className="p-4 border-t bg-white h-[100px]">
+          <div className="p-4 border-t bg-white flex-shrink-0">
             <div className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 mb-2">
               <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center">
                 <User className="h-4 w-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate capitalize">
-                  {user}
+                  {currentUserFullName}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {user}@roofingcrm.com
+                  {loading ? 'Loading...' : user}
                 </p>
               </div>
             </div>
@@ -106,107 +141,32 @@ const CrmDashboard = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-0">
+      <div className="flex-1 lg:ml-0 flex flex-col h-full overflow-hidden">
         {/* Top header */}
-        <header className="bg-white shadow-sm border-b px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search..."
-                  className="pl-10 w-64 text-gray-900 rounded-md"
-                />
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 text-white" />
+        <div className="bg-white shadow-sm border-b px-4 sm:px-6 py-1 flex-shrink-0">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 mr-2"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Contractor Dashboard
+                </h1>
               </div>
             </div>
           </div>
-        </header>
+        </div>
 
         {/* Main content area */}
-        <main className="p-4 sm:p-6">
-          {/* Welcome section */}
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Welcome back, <span className="text-[#286BBD] capitalize">{user}</span>! 👋
-            </h1>
-            <p className="text-gray-600 text-base sm:text-lg">
-              Here's what's happening with your roofing business today.
-            </p>
-          </div>
-
-          {/* Stats cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-[#286BBD]">Total Projects</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl text-[#286BBD] font-bold">24</div>
-                <p className="text-xs text-muted-foreground">
-                  +2 from last month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-[#286BBD]">Active Clients</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl text-[#286BBD] font-bold">18</div>
-                <p className="text-xs text-muted-foreground">
-                  +3 new this week
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-[#286BBD]">Revenue</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl text-[#286BBD] font-bold">$45,231</div>
-                <p className="text-xs text-muted-foreground">
-                  +20.1% from last month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-[#286BBD]">Pending Quotes</CardTitle>
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl text-[#286BBD] font-bold">7</div>
-                <p className="text-xs text-muted-foreground">
-                  3 need follow-up
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-
-        </main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>
-    </div>
-  )
-}
 
-export default CrmDashboard
+    </div>
+  );
+};
+
+export default CrmDashboard;
