@@ -13,7 +13,7 @@ import { CheckCircle, ArrowLeft, Eye, EyeOff, ChevronDown } from 'lucide-react';
 // Google Places API configuration
 const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || '';
 
-// Interface for Google Places prediction
+// Interface for Google Places prediction here
 interface PlacePrediction {
   place_id: string;
   description: string;
