@@ -1,38 +1,35 @@
 "use client";
 
-import {useState} from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { User, EyeOff, Eye, CheckCircle } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { User, EyeOff, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormDataType } from "@/types/AuthType";
 import { toast } from "react-toastify";
+import { supabase } from "@/lib/supabase";
 
 // 1. Define validation schema
 const schema = yup.object().shape({
   emailAddress: yup
-  .string()
-  .email('Invalid email address')
-  .matches(
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-    'Please enter a valid email address'
-  )
-  .required('Email is required'),
+    .string()
+    .email("Invalid email address")
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Please enter a valid email address")
+    .required("Email is required"),
   password: yup
     .string()
-    .matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 'Password must be 8 characters, 1 uppercase, 1 number & 1 special character')
+    .matches(
+      /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&-])[A-Za-z\d@$!%*?&-]{8,}$/,
+      "Password must be 8 characters, 1 uppercase, 1 number & 1 special character"
+    )
     .required("Password is required"),
 });
 
 // 2. Form data type
 
-
 export default function LoginModal() {
-
   const router = useRouter();
-  const { login } = useAuth();
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // 3. Setup react-hook-form
@@ -40,44 +37,89 @@ export default function LoginModal() {
     register,
     handleSubmit,
     formState: { errors },
-    reset,
   } = useForm<FormDataType>({
     resolver: yupResolver(schema),
   });
 
   // 4. On form submit
-  const onSubmit = (data: FormDataType) => {
+  // const onSubmit = (data: FormDataType) => {
 
-    if (data.emailAddress === "jawad.dev921@gmail.com" && data.password === "@Test123") {
-      toast.success("Login successful.");
-      login(data.emailAddress);
-      router.push('/admin');
-      reset();
-      return;
+  //   const existingUsers = JSON.parse(localStorage.getItem("userInfo") || "[]");
+  //   const isValid = existingUsers.some(
+  //     (user: FormDataType) =>
+  //       user.emailAddress.toLowerCase() === data.emailAddress.toLowerCase() && user.password === data.password
+  //   );
+
+  //   if (!isValid) {
+  //     toast.error("Invalid credentials. Please use the Correct credentials.");
+  //     return;
+  //   }
+  //   toast.success("Login successful.");
+  //   login(data.emailAddress);
+  //   reset();
+  // };
+
+  const onSubmit = async (data: FormDataType) => {
+    try {
+      // 1️⃣ Try to sign in user using Supabase Auth
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.emailAddress.toLowerCase(),
+        password: data.password,
+      });
+
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          toast.error("Invalid email or password.");
+        } else if (error.message.includes("Email not confirmed")) {
+          toast.error("Please confirm your email before logging in.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
+
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+        // Check user role - only allow user role
+        if (currentUser?.user_metadata.role !== "user") {
+          await supabase.auth.signOut();
+          toast.error("Access denied. Only contractors can access this panel.");
+          // setIsLoading(false);
+          return;
+        }
+
+      // 2️⃣ Successfully logged in
+
+      const user = authData.user;
+      if (!user) {
+        toast.error("User not found after login.");
+        return;
+      }
+      localStorage.setItem("user_id", user.id);
+      toast.success("Login successful!");
+
+      // 3️⃣ Optionally fetch the user's Roofing_Auth record
+      const { data: userRecord, error: recordError } = await supabase
+        .from("Roofing_Auth")
+        .select("*")
+        .eq("user_id", authData.user?.id)
+        .single();
+
+      if (recordError) {
+        console.warn("No Roofing_Auth data found for this user:", recordError);
+      } else {
+        console.log("User Roofing_Auth data:", userRecord);
+        // you can save this to context, localStorage, or global state
+        localStorage.setItem("userInfo", JSON.stringify(userRecord));
+        localStorage.setItem("loggedInUser", authData.user?.email || "");
+      }
+
+      // 4️⃣ Redirect to dashboard or thank-you page
+      router.push("/contractor/dashboard");
+    } catch (err: any) {
+      console.error("Login error:", err);
+      toast.error("Login failed. Please try again.");
     }
-
-    const validCredentials = [
-      { emailAddress: "contractor1", password: "pass123" },
-      { emailAddress: "contractor2", password: "pass456" },
-    ];
-
-    const existingUsers = JSON.parse(localStorage.getItem("userInfo") || "[]");
-    const isValid = existingUsers.some(
-      (user: FormDataType) =>
-        user.emailAddress === data.emailAddress && user.password === data.password
-    );
-
-    // const isValidCredentials = validCredentials.some(
-    //   cred => cred.emailAddress === data.emailAddress && cred.password === data.password
-    // );
-
-    if (!isValid) {
-      toast.error("Invalid credentials. Please use the Correct credentials.");
-      return;
-    }
-    toast.success("Login successful.");
-    login(data.emailAddress);
-    reset();
   };
 
   return (
@@ -92,13 +134,6 @@ export default function LoginModal() {
       `}</style>
       <div className="relative my-auto w-full flex justify-center">
         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 border border-gray-200">
-          {/* <button
-            onClick={handleClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
-          >
-            <X className="h-5 w-5" />
-          </button> */}
-
           <div className="text-center mb-8">
             <div className="relative inline-block mb-6">
               <div className="w-16 h-16 bg-[#122E5F] rounded-2xl flex items-center justify-center shadow-lg mx-auto">
@@ -137,20 +172,24 @@ export default function LoginModal() {
                 Password
               </label>
               <div className="relative">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Enter password"
-                {...register("password")}
-                className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] text-gray-900 placeholder-gray-500 transition-all duration-300"
-              />
-              <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Enter password"
+                  {...register("password")}
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2563eb] focus:border-[#2563eb] text-gray-900 placeholder-gray-500 transition-all duration-300"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
               {errors.password && (
                 <p className="text-red-500 text-sm mt-1">
                   {errors.password.message}
@@ -158,8 +197,19 @@ export default function LoginModal() {
               )}
             </div>
 
+            {/* Forgot Password Link */}
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => router.push("/forget-password")}
+                className="text-sm text-[#286BBD] hover:text-[#1d4ed8] font-medium transition-colors duration-200"
+              >
+                Forgot Password?
+              </button>
+            </div>
+
             {/* Buttons */}
-            <div className="flex space-x-3 pt-4">
+            <div className="flex space-x-3">
               <button
                 type="submit"
                 className="flex-1 bg-[#122E5F] hover:bg-[#0f2347] text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 shadow-lg"
@@ -179,7 +229,7 @@ export default function LoginModal() {
           {/* Switch to Register */}
           <div className="text-center pt-4 border-t border-gray-200">
             <span className="text-sm text-gray-600">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <button
                 onClick={() => router.push("/")}
                 className="text-[#286BBD] hover:text-[#1d4ed8] font-semibold transition-colors duration-200"
@@ -187,25 +237,6 @@ export default function LoginModal() {
                 Create Account
               </button>
             </span>
-          </div>
-
-          {/* Trust Badge */}
-          <div className="mt-4 mx-auto max-w-[240px]">
-            <div className="relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#122E5F]/10 to-[#286BBD]/10 animate-pulse rounded-xl"></div>
-              <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl border border-[#286BBD]/20 text-center">
-                <div className="flex items-center justify-center space-x-1.5">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-[#286BBD]/20 blur-sm rounded-full"></div>
-                    <CheckCircle className="h-3.5 w-3.5 text-[#286BBD] relative" />
-                  </div>
-                  <span className="text-[11px] font-medium text-[#122E5F]">
-                    Trusted by 2K+ Pros
-                  </span>
-                  <span className="text-[11px] text-[#286BBD]">💫</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

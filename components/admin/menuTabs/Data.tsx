@@ -1,11 +1,57 @@
 import { FileText, Users, DollarSign, Settings, BarChart3 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { toast } from "react-toastify";
+import { ContractorType } from "@/types/AdminTypes";
 
 export const sidebarItems = [
-  { id: "dashboard", label: "Dashboard", icon: BarChart3, path: "/admin" },
+  { id: "dashboard", label: "Dashboard", icon: BarChart3, path: "/admin/dashboard" },
   { id: "leads", label: "Leads", icon: FileText, path: "/admin/leads" },
   { id: "contractors", label: "Contractors", icon: Users, path: "/admin/contractors", },
+  { id: "leads-request", label: "Lead Request", icon: FileText, path: "/admin/leads-request", },
   { id: "settings", label: "Settings", icon: Settings, path: "/admin/settings", },
 ];
+
+export const fetchContractors = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("Roofing_Auth")
+      .select(
+        `"Full Name", "Title", "Phone Number", "Email Address", "Business Address", "Service Radius", user_id`
+      );
+
+    if (error) throw error;
+
+    const mappedData: ContractorType[] =
+      data?.map((item: any) => ({
+        user_id: item.user_id,
+        fullName: item["Full Name"] || "",
+        title: item["Title"] || "",
+        phoneno: item["Phone Number"] || "",
+        email: item["Email Address"] || "",
+        businessAddress: item["Business Address"] || "",
+        serviceRadius: item["Service Radius"] || "",
+      })) || [];
+
+    return mappedData;
+  } catch (err: any) {
+    console.error("Error fetching contractors:", err);
+    toast.error("Failed to load contractors");
+  }
+};
+
+export const fetchLeads = async () => {
+
+  const { data, error } = await supabase
+    .from("Leads_Data")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching leads:", error);
+  } else {
+    return data || [];
+  }
+};
 
 // Leads Data
 export const allLeads = [
@@ -13,9 +59,11 @@ export const allLeads = [
     id: 1,
     firstName: "John",
     lastName: "Doe",
-    phoneno: "1234567890",
+    phoneno: "(555) 123-5787",
     email: "john.doe@example.com",
     zipCode: "75201",
+    address: "Main St, Houston, TX",
+    assignedDate: "2024-01-15",
     company: "ABC Inc",
     policy: "1234567890",
     assignedTo: null,
@@ -26,8 +74,10 @@ export const allLeads = [
     zipCode: "75202",
     firstName: "Jane",
     lastName: "Smith",
-    phoneno: "1234567890",
+    phoneno: "(555) 987-5787",
     email: "jane.doe@example.com",
+    address: "Main St, Dallas, TX",
+    assignedDate: "2024-01-14",
     company: "ABC Inc",
     policy: "1234567890",
     assignedTo: "Mike Rodriguez",
@@ -38,8 +88,10 @@ export const allLeads = [
     zipCode: "75203",
     firstName: "Jim",
     lastName: "Beam",
-    phoneno: "1234567890",
+    phoneno: "(555) 789-5787",
     email: "jim.beam@example.com",
+    address: "Main St, Austin, TX",
+    assignedDate: "2024-01-13",
     company: "XYZ Corp",
     policy: "1234567890",
     assignedTo: "Jennifer Martinez",
@@ -50,8 +102,10 @@ export const allLeads = [
     zipCode: "75204",
     firstName: "Sarah",
     lastName: "Johnson",
-    phoneno: "0987654321",
+    phoneno: "(555) 456-5787",
     email: "sarah.johnson@example.com",
+    address: "Main St, San Antonio, TX",
+    assignedDate: "2024-01-12",
     company: "DEF Ltd",
     policy: "0987654321",
     assignedTo: "Robert Wilson",
@@ -62,8 +116,10 @@ export const allLeads = [
     zipCode: "75205",
     firstName: "Mike",
     lastName: "Wilson",
-    phoneno: "5555555555",
+    phoneno: "(555) 555-5787",
     email: "mike.wilson@example.com",
+    address: "Main St, San Antonio, TX",
+    assignedDate: "2024-01-11",
     company: "GHI Inc",
     policy: "5555555555",
     assignedTo: null,
@@ -79,7 +135,7 @@ export const contractors = [
     title: "manager",
     phoneno: "1234567890",
     email: "mike.rodriguez@example.com",
-    location: "Houston, TX",
+    businessAddress: "123 Main St, Houston, TX",
     serviceRadius: "100 miles",
   },
   {
@@ -88,7 +144,7 @@ export const contractors = [
     title: "manager",
     phoneno: "1234567890",
     email: "jennifer.martinez@example.com",
-    location: "Dallas, TX",
+    businessAddress: "123 Main St, Dallas, TX",
     serviceRadius: "26 miles",
   },
   {
@@ -97,7 +153,7 @@ export const contractors = [
     title: "Contractor",
     phoneno: "1234567890",
     email: "robert.wilson@example.com",
-    location: "Austin, TX",
+    businessAddress: "123 Main St, Austin, TX",
     serviceRadius: "90 miles",
   },
 ];
@@ -107,24 +163,18 @@ export const dashboardCard = [
   {
     title: "Total Leads",
     value: "2,847",
-    change: "+12.5%",
     icon: FileText,
-    color: "bg-[#122E5F]",
   },
   {
     title: "Active Contractors",
     value: "156",
-    change: "+8.2%",
     icon: Users,
-    color: "bg-[#286BBD]",
   },
   {
     time: "Last Month",
     title: "Total Sales",
     value: "$284,750",
-    change: "+15.3%",
     icon: DollarSign,
-    color: "bg-[#122E5F]",
   },
 ];
 
@@ -135,6 +185,9 @@ export const requestLeads = [
     lastName: "Smith",
     phoneno: "(214) 555-0123",
     noOfLeads: 10,
+    price: 100,
+    date: "2024-01-15",
+    assignedDate: "2024-01-15",
     receivedLeads: 5,
     pendingLeads: 5,
     zipCode: "75201",
@@ -146,7 +199,10 @@ export const requestLeads = [
     lastName: "Johnson",
     phoneno: "(214) 555-0456",
     noOfLeads: 6,
-    receivedLeads: "-",
+    price: 100,
+    date: "2024-01-14",
+    assignedDate: "2024-01-14",
+    receivedLeads: "6",
     pendingLeads: "-",
     zipCode: "75202",
     status: "Assign",
@@ -157,7 +213,10 @@ export const requestLeads = [
     lastName: "Davis",
     phoneno: "(214) 555-0789",
     noOfLeads: 7,
-    receivedLeads: "-",
+    price: 100,
+    date: "2024-01-13",
+    assignedDate: "2024-01-13",
+    receivedLeads: "7",
     pendingLeads: "-",
     zipCode: "75203",
     status: "Assign",
@@ -168,6 +227,9 @@ export const requestLeads = [
     lastName: "Wilson",
     phoneno: "(214) 555-0321",
     noOfLeads: 4,
+    price: 100,
+    date: "2024-01-12",
+    assignedDate: "2024-01-12",
     receivedLeads: 2,
     pendingLeads: 2,
     zipCode: "75204",
@@ -179,7 +241,10 @@ export const requestLeads = [
     lastName: "Chen",
     phoneno: "(214) 555-0123",
     noOfLeads: 10,
-    receivedLeads: "-",
+    price: 100,
+    date: "2024-01-11",
+    assignedDate: "2024-01-11",
+    receivedLeads: "10",
     pendingLeads: "-",
     zipCode: "75205",
     status: "Assign",

@@ -110,7 +110,7 @@
       phoneno: '(214) 555-0789',
       email: 'michael.davis@email.com',
       location: 'Austin, TX',
-      company: 'USAA',
+      company: 'USA',
       policy: 'US456789123',
       purchaseDate: '2024-01-13',
     },
@@ -128,6 +128,26 @@
     },
   ];
 
+  export const sampleLeads = [
+    {
+      id: 1,
+      firstName: "John",
+      lastName: "Smith",
+      zipCode: "75201",
+      phone: "(555) 123-****",
+      email: "john.sm***@email.com",
+      price: 75,
+    },
+    {
+      id: 2,
+      firstName: "Sarah",
+      lastName: "Johnson",
+      zipCode: "75202",
+      phone: "(555) 987-****",
+      email: "sarah.jo***@email.com",
+      price: 100,
+    },
+  ];
 
   export const LeadsInfo = [
     {
@@ -178,7 +198,7 @@
   ]
 
   export const teamMembers = [
-    { name: 'Sarah Johnson', email: 'sarah@company.com', phoneno: '1234567890'},
-    { name: 'Mike Davis', email: 'mike@company.com', phoneno: '1234567890'},
+    { name: 'Sarah Johnson', email: 'sarah@company.com', phoneno: '(214) 555-0123'},
+    { name: 'Mike Davis', email: 'mike@company.com', phoneno: '(214) 555-0123'},
     { name: 'Lisa Chen', email: 'lisa@company.com', phoneno: '1234567890'}
   ]

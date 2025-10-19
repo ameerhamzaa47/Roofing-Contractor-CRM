@@ -6,35 +6,49 @@ import { User, Edit3, Save, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { settingType } from "@/types/AdminTypes";
-import { useAuth } from "@/hooks/useAuth";
+import { toast } from "react-toastify";
+import { supabase } from "@/lib/supabase";
 
 export const Setting = () => {
-  const { user } = useAuth();
-  const userInfo = JSON.parse(localStorage.getItem("userInfo") || "[]");
-  const currentUserInfo = userInfo.find(
-    (info: { emailAddress: string; fullName: string }) =>
-      info.emailAddress === user
-  );
-  const currentUserFullName = currentUserInfo?.fullName || user;
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [formData, setFormData] = useState<settingType>({
     fullName: "",
     email: "",
-    serviceRadius: "25",
-    businessAddress: "123 Main St, Dallas, TX 75201",
-    leads: "10"
+    businessAddress: "",
+    leads: ""
   });
 
   useEffect(() => {
-    setFormData({
-      fullName: currentUserFullName || "",
-      email: user || "",
-      serviceRadius: "25",
-      businessAddress: "123 Main St, Dallas, TX 75201",
-      leads: "10"
-    });
-  }, [currentUserFullName, user]);
+    const fetchAdminData = async () => {
+      try {
+
+        const { data, error } = await supabase
+          .from("Admin_Data")
+          .select(`"Full Name", "Email Address", "Business Address", "Price Per Lead"`)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          setFormData({
+            fullName: data["Full Name"] || "",
+            email: data["Email Address"] || "",
+            businessAddress: data["Business Address"] || "",
+            leads: data["Price Per Lead"]?.toString() || "",
+          });
+        } else {
+          toast.warning("No admin data found in table.");
+        }
+      } catch (err: any) {
+        console.error("Error fetching admin data:", err);
+        toast.error("Failed to load admin data");
+      }
+    };
+
+    fetchAdminData();
+  }, []);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -42,19 +56,90 @@ export const Setting = () => {
 
   const handleCancel = () => {
     setIsEditing(false);
-    setFormData({
-      fullName: currentUserFullName || "",
-      email: user || "",
-      serviceRadius: "25",
-      businessAddress: "123 Main St, Dallas, TX 75201",
-      leads: "10"
-    });
   };
 
-  const handleUpdate = () => {
-    console.log('Updating profile with:', formData);
-    setIsEditing(false);
+  const handleUpdate = async () => {
+    setLoading(true);
+    try {
+      const oldEmail = localStorage.getItem("adminLoggedInUser");
+      const adminId = localStorage.getItem("admin_id");
+      
+      if (!oldEmail || !adminId) {
+        toast.error("Admin not logged in.");
+        return;
+      }
+
+      const newEmail = formData.email;
+
+      if (oldEmail !== newEmail) {
+        const response = await fetch("/api/update-admin-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: adminId,
+            oldEmail: oldEmail,
+            newEmail: newEmail,
+            fullName: formData.fullName,
+            businessAddress: formData.businessAddress,
+            pricePerLead: parseFloat(formData.leads) || null,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          if (result.error?.includes("already registered") || result.error?.includes("duplicate")) {
+            toast.error("This email is already registered with another account");
+            return;
+          }
+          throw new Error(result.error || "Failed to update email");
+        }
+
+        toast.success("Email updated successfully! Please log in again with your new email.");
+        
+        await supabase.auth.signOut();
+        localStorage.removeItem("adminLoggedInUser");
+        localStorage.removeItem("admin_id");
+        
+        window.location.href = "/adminLogin";
+        return;
+      }
+
+      console.log("🟢 Updating Admin_Data for:", oldEmail, "→", formData.email);
+
+      const { error: updateError } = await supabase
+        .from("Admin_Data")
+        .update({
+          "Full Name": formData.fullName,
+          "Email Address": formData.email,
+          "Business Address": formData.businessAddress,
+          "Price Per Lead": parseFloat(formData.leads) || null,
+        })
+        .eq("Email Address", oldEmail);
+
+      if (updateError) {
+        console.error("❌ Supabase Admin_Data update error:", updateError);
+        toast.error("Error updating Admin_Data table");
+        return;
+      }
+
+      localStorage.setItem("adminLoggedInUser", formData.email);
+
+      toast.success("Admin profile updated successfully!");
+      setIsEditing(false);
+    } catch (err: any) {
+      console.error("❌ Update error:", err);
+      toast.error("Failed to update admin data");
+    } finally {
+      setLoading(false);
+    }
   };
+  
+  
+  
+  
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -75,13 +160,13 @@ export const Setting = () => {
           </CardHeader>
           <CardContent className="space-y-6 p-6">
             <div className="text-center mb-6">
-              <div className="w-20 h-20 bg-[#286BBD] rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-20 h-20 bg-[#122E5F] rounded-full flex items-center justify-center mx-auto mb-3">
                 <User className="h-10 w-10 text-white" />
               </div>
               <h3 className="font-semibold text-gray-900 capitalize">
-                {currentUserFullName}
+                {formData.fullName}
               </h3>
-              <p className="text-sm text-gray-600">{user}</p>
+              <p className="text-sm text-gray-600">{formData.email}</p>
             </div>
             <div className="space-y-4">
               <div>
@@ -108,22 +193,6 @@ export const Setting = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Service Radius
-                </label>
-                <div className="relative">
-                  <Input
-                    value={formData.serviceRadius}
-                    onChange={(e) => handleInputChange('serviceRadius', e.target.value)}
-                    readOnly={!isEditing}
-                    className={`text-gray-900 h-11 pr-16 ${!isEditing ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                  />
-                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                    miles
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Business Address
                 </label>
                 <Input
@@ -135,20 +204,25 @@ export const Setting = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Leads
+                  Price Per Lead
                 </label>
-                <Input
-                  value={formData.leads}
-                  onChange={(e) => handleInputChange('leads', e.target.value)}
-                  readOnly={!isEditing}
-                  className={`text-gray-900 h-11 ${!isEditing ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                />
+                <div className="relative">
+                  <Input
+                    value={formData.leads}
+                    onChange={(e) => handleInputChange('leads', e.target.value)}
+                    readOnly={!isEditing}
+                    className={`text-gray-900 h-11 pr-16 ${!isEditing ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                    $
+                  </span>
+                </div>
               </div>
             </div>
             {!isEditing ? (
               <Button 
                 onClick={handleEdit}
-                className="w-full h-11 bg-[#286BBD] hover:bg-[#1d4ed8] font-semibold"
+                className="w-full h-11 bg-[#122E5F] hover:bg-[#0f2347]/80 font-semibold"
               >
                 <Edit3 className="h-4 w-4 mr-2" />
                 Edit Profile
@@ -165,10 +239,11 @@ export const Setting = () => {
                 </Button>
                 <Button 
                   onClick={handleUpdate}
-                  className="flex-1 h-11 bg-[#286BBD] hover:bg-[#1d4ed8] font-semibold"
+                  className={`flex-1 h-11 bg-[#122E5F] hover:bg-[#0f2347]/80 font-semibold ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  disabled={loading}
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  Update Profile
+                  {loading ? "Updating..." : "Update Profile"}
                 </Button>
               </div>
             )}

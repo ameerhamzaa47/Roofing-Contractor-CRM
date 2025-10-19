@@ -1,38 +1,52 @@
 "use client";
 
-import { ProtectedRoute } from '@/components/Auth/ProtectedRoute';
-import { Dashboard, Leads, Contractors, Setting } from '@/components/admin/menuTabs/Index';
-import { notFound } from 'next/navigation';
-import { AdminSectionPageProps } from '@/types/AdminTypes';
+import { ProtectedRoute } from "@/components/Auth/ProtectedRoute";
+import { Dashboard, Leads, Contractors, Setting, LeadRequest } from "@/components/admin/menuTabs/Index";
+import { notFound } from "next/navigation";
+import { AdminSectionPageProps } from "@/types/AdminTypes";
+import { useEffect, useState } from "react";
 
+const validSections = ["dashboard", "leads", "contractors", "leads-request", "settings"];
 
-const validSections = ['dashboard', 'leads', 'contractors', 'settings'];
+export default function AdminSectionPage({ params }: { params: Promise<{ section: string }> }) {
+  const [section, setSection] = useState<string>("");
 
-export default function AdminSectionPage({ params }: AdminSectionPageProps) {
-  const { section } = params;
-  
+  useEffect(() => {
+    params.then(({ section }) => setSection(section));
+  }, [params]);
+
+  if (!section) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex space-x-2">
+          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
+          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+        </div>
+      </div>
+    );
+  }
+
   if (!validSections.includes(section.toLowerCase())) {
     notFound();
   }
 
   const renderSection = () => {
     switch (section.toLowerCase()) {
-      case 'dashboard':
+      case "dashboard":
         return <Dashboard />;
-      case 'leads':
+      case "leads":
         return <Leads />;
-      case 'contractors':
+      case "contractors":
         return <Contractors />;
-      case 'settings':
+      case "leads-request":
+        return <LeadRequest />;
+      case "settings":
         return <Setting />;
       default:
         return <Dashboard />;
     }
   };
 
-  return (
-    <ProtectedRoute requireAuth={true}>
-      {renderSection()}
-    </ProtectedRoute>
-  );
+  return <>{renderSection()}</>;
 }

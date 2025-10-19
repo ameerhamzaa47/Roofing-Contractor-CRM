@@ -1,52 +1,165 @@
 "use client";
 
 import React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
   MapPin,
   Eye,
   Target,
   X,
-  ChevronLeft,
-  ChevronRight,
+  Globe,
   Phone,
   Mail,
-  User,
   Search,
+  FileText,
+  User,
+  Building,
 } from "lucide-react";
 import { UserCheck } from "lucide-react";
-import { contractors } from "./Data";
 import { ContractorType, LeadType } from "@/types/AdminTypes";
-import { allLeads } from "./Data";
-
+import { toast } from "react-toastify";
+import { supabase } from "@/lib/supabase";
+import { fetchContractors, fetchLeads } from "./Data";
 
 export const Contractors = () => {
-  const [selectedContractor, setSelectedContractor] =useState<ContractorType>();
+  const [selectedContractor, setSelectedContractor] =
+    useState<ContractorType>();
   const [showModal, setShowModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<LeadType>();
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [contractorSearchTerm, setContractorSearchTerm] = useState("");
-
+  const [assignedLeadsSearchTerm, setAssignedLeadsSearchTerm] = useState("");
+  const [contractors, setContractors] = useState<ContractorType[]>([]);
+  const [assignedLeads, setAssignedLeads] = useState<any[]>([]);
+  const [existingAssignments, setExistingAssignments] = useState<string[]>([]);
+  const [loadingContractors, setLoadingContractors] = useState(false);
+  const [loadingAssignedLeads, setLoadingAssignedLeads] = useState(false);
   // Filter contractors based on search term
-  const filteredContractors = contractors.filter(contractor => 
-    contractor.fullName.toLowerCase().includes(contractorSearchTerm.toLowerCase()) ||
-    contractor.phoneno.toLowerCase().includes(contractorSearchTerm.toLowerCase()) ||
-    contractor.location.toLowerCase().includes(contractorSearchTerm.toLowerCase())
+  const filteredContractors = contractors.filter(
+    (contractor) =>
+      contractor.fullName
+        .toLowerCase()
+        .includes(contractorSearchTerm.toLowerCase()) ||
+      contractor.phoneno
+        .toLowerCase()
+        .includes(contractorSearchTerm.toLowerCase()) ||
+      contractor.businessAddress
+        .toLowerCase()
+        .includes(contractorSearchTerm.toLowerCase())
+  );
+
+  useEffect(() => {
+    const fetchContractorsData = async () => {
+      setLoadingContractors(true);
+      const contractorsData = await fetchContractors();
+      if (contractorsData) {
+        setContractors(contractorsData);
+      }
+      setLoadingContractors(false);
+    };
+    fetchContractorsData();
+  }, []);
+
+  const fetchAssignedLeads = async (contractorId: string) => {
+    setLoadingAssignedLeads(true);
+    console.log("fetching assigned leads for contractor:", contractorId);
+    try {
+      const { data, error } = await supabase
+        .from("Contractor_Leads")
+        .select("*")
+        .eq("contractor_id", contractorId);
+
+      if (error) throw error;
+      setAssignedLeads(data);
+    } catch (err) {
+      console.error("Error fetching assigned leads:", err);
+      setAssignedLeads([]);
+    } finally {
+      setLoadingAssignedLeads(false);
+    }
+  };
+
+  const fetchExistingAssignments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("Contractor_Leads")
+        .select('"Email Address"');
+
+      if (error) throw error;
+      const emails =
+        data
+          ?.map((item: any) => (item as any)["Email Address"])
+          .filter(Boolean) || [];
+      setExistingAssignments(emails);
+    } catch (err) {
+      console.error("Error fetching existing assignments:", err);
+      setExistingAssignments([]);
+    }
+  };
+
+  useEffect(() => {
+    const fetchLeadsData = async () => {
+      const leadsData = await fetchLeads();
+      if (leadsData) {
+        setLeads(leadsData);
+      }
+    };
+    fetchLeadsData();
+    fetchExistingAssignments();
+  }, []);
+
+  // Filter assigned leads based on search term
+  const filteredAssignedLeads = assignedLeads.filter(
+    (lead) =>
+      (lead["First Name"]?.toLowerCase() || "").includes(
+        assignedLeadsSearchTerm.toLowerCase()
+      ) ||
+      (lead["Last Name"]?.toLowerCase() || "").includes(
+        assignedLeadsSearchTerm.toLowerCase()
+      ) ||
+      (lead["Zip Code"] || "").includes(assignedLeadsSearchTerm) ||
+      (lead["Phone Number"] || "").includes(assignedLeadsSearchTerm) ||
+      (lead["Email Address"]?.toLowerCase() || "").includes(
+        assignedLeadsSearchTerm.toLowerCase()
+      ) ||
+      (lead["Insurance Company"]?.toLowerCase() || "").includes(
+        assignedLeadsSearchTerm.toLowerCase()
+      )
   );
 
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage = 3;
+  const [assignedLeadsCurrentPage, setAssignedLeadsCurrentPage] =
+    useState<number>(1);
+  const itemsPerPage = 10;
+  const assignedLeadsItemsPerPage = 10; // Smaller page size for modal table
   const totalPages = Math.ceil(filteredContractors.length / itemsPerPage);
+  const assignedLeadsTotalPages = Math.ceil(
+    filteredAssignedLeads.length / assignedLeadsItemsPerPage
+  );
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentData = filteredContractors.slice(startIndex, endIndex);
+
+  const assignedLeadsStartIndex =
+    (assignedLeadsCurrentPage - 1) * assignedLeadsItemsPerPage;
+  const assignedLeadsEndIndex =
+    assignedLeadsStartIndex + assignedLeadsItemsPerPage;
+  const currentAssignedLeadsData = filteredAssignedLeads.slice(
+    assignedLeadsStartIndex,
+    assignedLeadsEndIndex
+  );
+  const [leads, setLeads] = useState<LeadType[]>([]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const handlePreviousPage = () => {
     setCurrentPage((prev) => Math.max(prev - 1, 1));
@@ -56,21 +169,45 @@ export const Contractors = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
 
+  const handleAssignedLeadsPageChange = (page: number) => {
+    setAssignedLeadsCurrentPage(page);
+  };
+
+  const handleAssignedLeadsPreviousPage = () => {
+    setAssignedLeadsCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleAssignedLeadsNextPage = () => {
+    setAssignedLeadsCurrentPage((prev) =>
+      Math.min(prev + 1, assignedLeadsTotalPages)
+    );
+  };
+
   const handleViewContractor = (contractor: ContractorType): void => {
     setSelectedContractor(contractor);
+    setAssignedLeadsCurrentPage(1); // Reset pagination when opening modal
     setShowModal(true);
+    if (contractor.user_id) {
+      fetchAssignedLeads(contractor.user_id);
+    }
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
+    setAssignedLeads([]);
   };
+
+  // Reset assigned leads pagination when search term changes
+  useEffect(() => {
+    setAssignedLeadsCurrentPage(1);
+  }, [assignedLeadsSearchTerm]);
 
   const handleAssignLeads = () => {
     handleCloseModal();
   };
 
-  const handleAssignLead = (lead: LeadType) => {
-    setSelectedLead(lead);
+  const handleAssignLead = (contractor: ContractorType) => {
+    setSelectedContractor(contractor);
     setShowAssignModal(true);
     setSelectedLeads([]);
     setSearchTerm("");
@@ -83,45 +220,117 @@ export const Contractors = () => {
   };
 
   const handleLeadCheckbox = (leadId: string) => {
-    setSelectedLeads(prev => 
-      prev.includes(leadId) 
-        ? prev.filter(id => id !== leadId)
+    setSelectedLeads((prev) =>
+      prev.includes(leadId)
+        ? prev.filter((id) => id !== leadId)
         : [...prev, leadId]
     );
   };
 
-  const handleAssignToContractor = () => {
-    console.log('Assigning leads:', selectedLeads, 'to contractor:', selectedLead?.id);
-    handleCloseAssignModal();
+  const handleAssignToContractor = async () => {
+    if (!selectedContractor || selectedLeads.length === 0) {
+      toast.error("Please select a contractor and leads to assign");
+      return;
+    }
+
+    try {
+      const contractorId = selectedContractor.user_id;
+
+      const leadDataToInsert = selectedLeads.map((leadId) => {
+        const lead = leads.find((l) => l.id.toString() === leadId);
+        if (!lead) throw new Error(`Lead with ID ${leadId} not found`);
+
+        return {
+          "First Name": lead["First Name"],
+          "Last Name": lead["Last Name"],
+          "Phone Number": lead["Phone Number"],
+          "Email Address": lead["Email Address"],
+          "Zip Code": lead["Property ZIP Code"],
+          "Insurance Company": lead["Insurance Company"],
+          "Policy Number": lead["Policy Number"],
+          contractor_id: contractorId,
+        };
+      });
+
+      const { error: insertError } = await supabase
+        .from("Contractor_Leads")
+        .insert(leadDataToInsert);
+
+      if (insertError) {
+        if (insertError.code === "23505") {
+          toast.error(
+            "Some leads have already been assigned to contractors. Please select different leads."
+          );
+          return;
+        }
+        throw insertError;
+      }
+
+      const { error: updateError } = await supabase
+        .from("Leads_Data")
+        .update({
+          Status: "close",
+          // "Assigned To": selectedContractor.fullName
+        })
+        .in("id", selectedLeads);
+
+      if (updateError) throw updateError;
+
+      toast.success(
+        `${selectedLeads.length} leads assigned successfully to ${selectedContractor.fullName}`
+      );
+
+      if (selectedContractor.user_id) {
+        await fetchAssignedLeads(selectedContractor.user_id);
+      }
+
+      await fetchExistingAssignments();
+      handleCloseAssignModal();
+    } catch (error) {
+      console.error("Error assigning leads:", error);
+      toast.error("Failed to assign leads. Please try again.");
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleContractorSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleContractorSearchChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setContractorSearchTerm(e.target.value);
     setCurrentPage(1);
   };
 
-  const filteredLeads = allLeads.filter(lead => 
-    lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.zipCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.policy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.phoneno.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredLeads = leads.filter(
+    (lead) =>
+      (lead["First Name"].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead["Last Name"].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead["Property ZIP Code"]
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        lead["Insurance Company"]
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        lead["Policy Number"]
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        lead["Phone Number"]
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())) &&
+      !existingAssignments.includes(lead["Email Address"])
   );
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col justify-center md:justify-start gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl text-center md:text-start font-bold text-gray-900">
             Contractors Management
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-center md:text-start">
             Monitor contractor performance and manage accounts
           </p>
         </div>
@@ -152,13 +361,10 @@ export const Contractors = () => {
                     Full Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone Number
+                    Contect Info
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email Address
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
+                    Business Address
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Action
@@ -166,51 +372,87 @@ export const Contractors = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {currentData.map((contractor: ContractorType) => (
-                  <tr key={contractor.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-bold text-[#122E5F]">
-                        {contractor.fullName}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">
-                        {contractor.phoneno}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-[#286BBD]">
-                        {contractor.email}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900 flex items-center">
-                        <MapPin className="h-3 w-3 mr-1 text-gray-400" />
-                        {contractor.location}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 flex items-center gap-2 whitespace-nowrap">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-[#286BBD] text-[#286BBD] hover:bg-[#286BBD] hover:text-white"
-                        onClick={() => handleViewContractor(contractor)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-[#286BBD] text-[#286BBD] hover:bg-[#286BBD] hover:text-white"
-                        onClick={() => handleAssignLead(contractor as unknown as LeadType)}
-                      >
-                        <Target className="h-4 w-4 mr-1" />
-                        Assign
-                      </Button>
+                {loadingContractors ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
+                        <p className="mt-2 text-sm text-gray-500">
+                          Loading contractors...
+                        </p>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : currentData.length > 0 ? (
+                  currentData.map((contractor: ContractorType) => (
+                    <tr key={contractor.user_id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-bold text-[#122E5F] flex items-center">
+                          <User className="h-3 w-3 mr-1 text-gray-600" />
+                          {contractor.fullName}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900 flex items-center">
+                          <Phone className="h-3 w-3 mr-1 text-gray-400" />
+                          {contractor.phoneno}
+                        </span>
+                        <span className="text-sm font-medium text-[#286BBD] flex items-center">
+                          <Mail className="h-3 w-3 mr-1 text-gray-400" />
+                          {contractor.email}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {/* <div className="bg-red-500 w-10 break-all"> */}
+                        <span className="text-sm text-gray-900 flex items-center">
+                          <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+                          <span className="w-52 truncate">
+                            {contractor.businessAddress}
+                          </span>
+                        </span>
+                        {/* </div> */}
+                      </td>
+                      <td className="px-6 py-4 flex items-center gap-2 whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-[#122E5F] text-[#122E5F] hover:bg-[#122E5F] hover:text-white"
+                          onClick={() => handleViewContractor(contractor)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-[#122E5F] text-[#122E5F] hover:bg-[#122E5F] hover:text-white"
+                          onClick={() => handleAssignLead(contractor)}
+                        >
+                          <Target className="h-4 w-4 mr-1" />
+                          Assign
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center">
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Search className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          No contractors found
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {contractorSearchTerm
+                            ? `No contractors match "${contractorSearchTerm}"`
+                            : "No contractors available"}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -218,91 +460,36 @@ export const Contractors = () => {
       </Card>
 
       {/* Pagination Controls */}
-      {filteredContractors.length > 0 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, filteredContractors.length)}{" "}
-            of {filteredContractors.length} results
-            {contractorSearchTerm && (
-              <span className="text-[#286BBD] ml-2">
-                (filtered from {contractors.length} total)
-              </span>
-            )}
-          </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePreviousPage}
-            disabled={currentPage === 1}
-            className="flex items-center space-x-1"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span>Previous</span>
-          </Button>
-
-          <div className="flex items-center space-x-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrentPage(page)}
-                className={`w-8 h-8 p-0 ${
-                  currentPage === page
-                    ? "bg-[#286BBD] text-white"
-                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {page}
-              </Button>
-            ))}
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages}
-            className="flex items-center space-x-1"
-          >
-            <span>Next</span>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        </div>
-      )}
-
-      {/* No Results Message */}
-      {filteredContractors.length === 0 && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Search className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No contractors found</h3>
-          <p className="text-sm text-gray-500">
-            {contractorSearchTerm ? `No contractors match "${contractorSearchTerm}"` : "No contractors available"}
-          </p>
-        </div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredContractors.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
+        onPreviousPage={handlePreviousPage}
+        onNextPage={handleNextPage}
+        startIndex={startIndex}
+        endIndex={endIndex}
+      />
 
       {/* View Contractor Modal */}
       {showModal && selectedContractor && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 relative animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 -top-5 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white  shadow-2xl w-full relative animate-in zoom-in-95 duration-300 h-full overflow-y-auto">
             {/* Close Button */}
             <button
               onClick={handleCloseModal}
-              className="absolute top-3 right-3 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-all duration-200"
+              className="absolute top-3 right-3 w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-all duration-200"
+              aria-label="Close modal"
             >
-              <X className="h-3 w-3" />
+              <X className="h-4 w-4" />
             </button>
 
             <div className="p-6">
               {/* Header */}
               <div className="text-center mb-6">
                 <div className="w-12 h-12 bg-[#286BBD]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <UserCheck className="h-6 w-6 text-[#286BBD]" />
+                  <UserCheck className="h-6 w-6 text-[#122E5F]" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-1">
                   Contractor Details
@@ -313,12 +500,13 @@ export const Contractors = () => {
               </div>
 
               {/* Contractor Information */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Full Name
                   </label>
-                  <p className="text-gray-900 bg-gray-50 p-1.5 rounded-md text-sm">
+                  <p className="text-gray-900 bg-gray-50 p-1.5 rounded-md text-sm flex items-center">
+                    <User className="h-3 w-3 mr-1 text-gray-400" />
                     {selectedContractor.fullName}
                   </p>
                 </div>
@@ -326,11 +514,12 @@ export const Contractors = () => {
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Title
                   </label>
-                  <p className="text-gray-900 bg-gray-50 p-1.5 rounded-md text-sm">
+                  <p className="text-gray-900 bg-gray-50 p-1.5 rounded-md text-sm flex items-center">
+                    <User className="h-3 w-3 mr-1 text-gray-400" />
                     {selectedContractor.title}
                   </p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Phone Number
@@ -342,19 +531,29 @@ export const Contractors = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Email Address
+                    Email Address
                   </label>
-                  <p className="text-gray-900 bg-gray-50 p-1.5 rounded-md text-sm">
+                  <p className="text-gray-900 bg-gray-50 p-1.5 break-all rounded-md text-sm flex items-center">
+                    <Mail className="h-3 w-3 mr-1 text-gray-400" />
                     {selectedContractor.email}
                   </p>
                 </div>
-                <div className="col-span-2">
+                <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Location
+                    Business Address
+                  </label>
+                  <p className="text-gray-900 break-all bg-gray-50 p-1.5 rounded-md text-sm flex items-center">
+                    <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+                    {selectedContractor.businessAddress}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Service Radius
                   </label>
                   <p className="text-gray-900 bg-gray-50 p-1.5 rounded-md text-sm flex items-center">
-                    <MapPin className="h-3 w-3 mr-1 text-gray-400" />
-                    {selectedContractor.location}
+                    <Globe className="h-3 w-3 mr-1 text-gray-400" />
+                    {selectedContractor.serviceRadius}
                   </p>
                 </div>
               </div>
@@ -366,12 +565,27 @@ export const Contractors = () => {
                   Assigned Leads
                 </h3>
 
+                {/* Search Bar for Assigned Leads */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search assigned leads..."
+                      value={assignedLeadsSearchTerm}
+                      onChange={(e) =>
+                        setAssignedLeadsSearchTerm(e.target.value)
+                      }
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#286BBD] focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-3">
-                  <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Name
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -389,46 +603,85 @@ export const Contractors = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {allLeads.slice(0, 3).map((lead: LeadType, index: number) => (
-                          <tr key={lead.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <div className="text-sm font-bold text-[#122E5F]">
-                                  {lead.firstName} {lead.lastName}
-                                </div>
+                        {loadingAssignedLeads ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-8 text-center">
+                              <div className="flex flex-col items-center justify-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
+                                <p className="mt-2 text-sm text-gray-500">Loading assigned leads...</p>
                               </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                                <span className="text-sm font-medium text-gray-900">
-                                  {lead.zipCode}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-black">
-                              <div className="space-y-1 flex items-center">
-                                <Phone className="h-3 w-3 text-gray-400 mr-1" />
-                                {lead.phoneno}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-black">
-                              <div className="space-y-1 flex items-center">
-                                <Mail className="h-3 w-3 text-gray-400 mr-1" />
-                                {lead.email}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-sm font-medium text-gray-900">
-                                {lead.company}
-                              </span>
                             </td>
                           </tr>
-                        ))}
+                        ) : currentAssignedLeadsData.length > 0 ? (
+                          currentAssignedLeadsData.map(
+                            (lead: any, index: number) => (
+                              <tr key={index} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div>
+                                    <div className="text-sm font-bold text-[#122E5F]">
+                                      {lead["First Name"]} {lead["Last Name"]}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <MapPin className="h-4 w-4 text-gray-400 mr-2" />
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {lead["Zip Code"]}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-black">
+                                  <div className="space-y-1 flex items-center">
+                                    <Phone className="h-3 w-3 text-gray-400 mr-1" />
+                                    {lead["Phone Number"]}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-black">
+                                  <div className="space-y-1 flex items-center">
+                                    <Mail className="h-3 w-3 text-gray-400 mr-1" />
+                                    {lead["Email Address"]}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className="text-sm font-medium text-gray-900 flex items-center">
+                                    <Building className="h-3 w-3 text-gray-400 mr-1" />
+                                    {lead["Insurance Company"]}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
+                          )
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={5}
+                              className="px-6 py-8 text-center text-gray-500"
+                            >
+                              No assigned leads found for this contractor
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
-                  </div>
                 </div>
+
+                {/* Assigned Leads Pagination */}
+                {assignedLeadsTotalPages > 0 && (
+                  <div className="mt-4">
+                    <Pagination
+                      currentPage={assignedLeadsCurrentPage}
+                      totalPages={assignedLeadsTotalPages}
+                      totalItems={filteredAssignedLeads.length}
+                      itemsPerPage={assignedLeadsItemsPerPage}
+                      onPageChange={handleAssignedLeadsPageChange}
+                      onPreviousPage={handleAssignedLeadsPreviousPage}
+                      onNextPage={handleAssignedLeadsNextPage}
+                      startIndex={assignedLeadsStartIndex}
+                      endIndex={assignedLeadsEndIndex}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -447,27 +700,30 @@ export const Contractors = () => {
       )}
 
       {/* Assign Lead Modal */}
-      {showAssignModal && selectedLead && (
+      {showAssignModal && selectedContractor && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 relative animate-in zoom-in-95 duration-300">
+          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full mx-4 relative animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-auto">
             {/* Close Button */}
             <button
               onClick={handleCloseAssignModal}
               className="absolute top-3 right-3 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-all duration-200"
+              aria-label="Close modal"
             >
-              <X className="h-3 w-3" />
+              <X className="h-4 w-4" />
             </button>
 
             <div className="p-6">
               {/* Header */}
               <div className="text-center mb-6">
                 <div className="w-12 h-12 bg-[#286BBD]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <User className="h-6 w-6 text-[#286BBD]" />
+                  <FileText className="h-6 w-6 text-[#122E5F]" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-1">
-                  Available Leads
+                  Assign Leads to {selectedContractor?.fullName}
                 </h2>
-                <p className="text-sm text-gray-600">Select a lead to assign to this contractor</p>
+                <p className="text-sm text-gray-600">
+                  Select leads to assign to this contractor
+                </p>
               </div>
 
               {/* Search Bar */}
@@ -485,53 +741,71 @@ export const Contractors = () => {
               </div>
 
               {/* Leads List */}
-              <div className="max-h-96 overflow-y-auto">
+              <div className="max-h-64 overflow-y-auto">
                 <div className="space-y-3">
                   {filteredLeads.length > 0 ? (
-                    filteredLeads.map((lead: LeadType) => (
-                    <div
-                      key={lead.id}
-                      className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <Checkbox
-                            checked={selectedLeads.includes(lead.id.toString())}
-                            onCheckedChange={() => handleLeadCheckbox(lead.id.toString())}
-                          />
-                          <div className="w-10 h-10 bg-[#286BBD]/10 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-semibold text-[#286BBD]">
-                              {lead.firstName.charAt(0).toUpperCase()}{lead.lastName.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">{lead.firstName} {lead.lastName}</h4>
-                            <p className="text-sm text-gray-600">{lead.company} • {lead.zipCode}</p>
+                    filteredLeads
+                      .filter((lead: LeadType) => lead.Status === "open")
+                      .map((lead: LeadType) => (
+                        <div
+                          key={lead.id}
+                          className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <Checkbox
+                                checked={selectedLeads.includes(
+                                  lead.id.toString()
+                                )}
+                                onCheckedChange={() =>
+                                  handleLeadCheckbox(lead.id.toString())
+                                }
+                              />
+                              <div className="w-10 h-10 bg-[#286BBD]/10 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-semibold text-[#286BBD]">
+                                  {lead["First Name"].charAt(0).toUpperCase()}
+                                  {lead["Last Name"].charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900">
+                                  {lead["First Name"]} {lead["Last Name"]}
+                                </h4>
+                                <p className="text-sm text-gray-600">
+                                  {lead["Insurance Company"]} •{" "}
+                                  {lead["Property ZIP Code"]}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex justify-between space-x-16 md:space-x-4 mt-4 md:mt-0">
+                              <div className="text-end">
+                                <p className="text-sm font-medium text-[#286BBD]">
+                                  {lead["Policy Number"]}
+                                </p>
+                                <p className="text-xs text-gray-500">Policy</p>
+                              </div>
+                              <div className="text-end">
+                                <p className="text-sm font-medium text-green-600">
+                                  {lead["Phone Number"]}
+                                </p>
+                                <p className="text-xs text-gray-500">Phone</p>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-[#286BBD]">{lead.policy}</p>
-                              <p className="text-xs text-gray-500">Policy</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-green-600">{lead.phoneno}</p>
-                              <p className="text-xs text-gray-500">Phone</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    ))
+                      ))
                   ) : (
                     <div className="text-center py-8">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Search className="h-8 w-8 text-gray-400" />
                       </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No leads found</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No leads found
+                      </h3>
                       <p className="text-sm text-gray-500">
-                        {searchTerm ? `No leads match "${searchTerm}"` : "No leads available"}
+                        {searchTerm
+                          ? `No leads match "${searchTerm}"`
+                          : "No leads available"}
                       </p>
                     </div>
                   )}
@@ -539,7 +813,7 @@ export const Contractors = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
+              <div className="flex flex-col md:flex-row gap-3 justify-end md:space-x-3 mt-6 pt-4 border-t border-gray-200">
                 <Button
                   variant="outline"
                   onClick={handleCloseAssignModal}
@@ -551,9 +825,9 @@ export const Contractors = () => {
                   onClick={handleAssignToContractor}
                   disabled={selectedLeads.length === 0}
                   className={`px-4 py-2 text-sm ${
-                    selectedLeads.length === 0 
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                      : 'bg-[#286BBD] hover:bg-[#1d4ed8] text-white'
+                    selectedLeads.length === 0
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-[#122E5F] hover:bg-[#0f2347]/80 text-white"
                   }`}
                 >
                   <Target className="h-4 w-4 mr-2" />

@@ -9,7 +9,6 @@ export interface CrmDashboardProps {
 }
 
 export interface crmDataType {
-  id: string;
   name: string;
   phoneno: string;
   email: string;
@@ -19,16 +18,24 @@ export interface crmDataType {
 }
 
 export interface purchasedLeadType {
-  location: string;
-  id: string;
-  zipCode: string;
+  "First Name": string;
+  "Last Name": string;
+  "Phone Number": string;
+  "Email Address": string;
+  "Zip Code": string;
+  "Insurance Company": string;
+  "Policy Number": string;
+  "Purchase Date": string;
+}
+
+export interface sampleLeadType {
+  id: number;
   firstName: string;
   lastName: string;
-  phoneno: string;
+  zipCode: string;
+  phone: string;
   email: string;
-  company: string;
-  policy: string;
-  purchaseDate: string;
+  price: number;
 }
 
 export interface purchaseFormType {
@@ -47,9 +54,9 @@ export interface leadsInfoType {
 }
 
 export interface teamMemberType {
-  name: string;
-  email: string;
-  phoneno: string;
+  Full_Name: string;
+  Email_Address: string;
+  Phone_Number: string;
 }
 
 export interface settingType {
@@ -57,4 +64,13 @@ export interface settingType {
   email: string;
   serviceRadius: string;
   businessAddress: string;
+}
+
+export interface  paymentMethodType {
+  id: string;
+  card_last4: string;
+  expiry_date: string;
+  cvv: string;
+  card_holder_name: string;
+  card_brand: string;
 }

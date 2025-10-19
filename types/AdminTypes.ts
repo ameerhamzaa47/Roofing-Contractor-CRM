@@ -3,9 +3,9 @@ export interface AdminDashboardProps {
 }
 
 export interface AdminSectionPageProps {
-  params: {
+  params: Promise<{
     section: string;
-  };
+  }>;
 }
 
 export interface sidebarItemsType {
@@ -16,41 +16,41 @@ export interface sidebarItemsType {
 }
 
 export interface LeadType {
-  id: number;
-  firstName: string;
-  lastName: string;
-  phoneno: string;
-  email: string;
-  zipCode: string;
-  company: string;
-  policy: string;
-  assignedTo: string | null;
-  purchaseDate: string;
+  id: string;
+  "First Name": string;
+  "Last Name": string;
+  "Phone Number": string;
+  "Email Address": string;
+  "Property ZIP Code": string;
+  "Address": string;
+  "Status": string;
+  "Assigned Date": string;
+  "Insurance Company": string;
+  "Policy Number": string;
+  "Assigned To": string | null;
+  "Purchase Date": string;
 }
 
 export interface ContractorType {
-  id: string;
+  user_id: string;
   fullName: string;
   title: string;
   phoneno: string;
   email: string;
-  location: string;
+  businessAddress: string;
   serviceRadius: string;
 }
 
 export interface dashboardCardType {
   title: string;
   value: string;
-  change: string;
   icon: React.ComponentType<any>;
-  color: string;
   time?: string;
 }
 
 export interface settingType {
   fullName: string;
   email: string;
-  serviceRadius: string;
   businessAddress: string;
   leads: string;
 }
@@ -61,6 +61,9 @@ export interface requestLeadType {
   lastName: string;
   phoneno: string;
   noOfLeads: number;
+  price: number;
+  date: string;
+  assignedDate: string;
   receivedLeads: number | string;
   pendingLeads: number | string;
   zipCode: string;
