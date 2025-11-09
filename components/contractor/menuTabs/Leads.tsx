@@ -8,64 +8,72 @@ import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { DetailPopup } from "@/components/ui/DetailPopup";
 import { useState } from "react";
-import { purchasedLeadType, sampleLeadType } from "@/types/DashboardTypes";
-import { purchasedLeads, sampleLeads } from "./Data";
+import { purchasedLeadType, premiumLeadType } from "@/types/DashboardTypes";
 import { supabase } from "@/lib/supabase";
 import { toast } from "react-toastify";
+import { fetchContractorLeads, fetchMatchLeads } from "./Data";
+import { fetchLeadPrice } from "@/lib/leadPrice";
 
 export const Leads = () => {
   const router = useRouter();
-  
   const [contractorLeads, setContractorLeads] = useState<any[]>([]);
+  const [premiumLeads, setPremiumLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  const defaultStatuses: Record<string, string> = {};
-  purchasedLeads.forEach(lead => {
-    defaultStatuses[lead.id] = "open";
-  });
-  
-  const [leadStatuses, setLeadStatuses] = useState<Record<string, string>>(defaultStatuses);
+  const [pricePerLead, setPricePerLead] = useState<number>(0);
 
-  const handleStatusChange = (leadId: string, status: string) => {
-    setLeadStatuses((prev) => ({
-      ...prev,
-      [leadId]: status,
-    }));
-  };
-  console.log('leadStatuses', leadStatuses);
-
-  const getLeadStatus = (leadId: string) => {
-    return leadStatuses[leadId];
-  };
-
-  const fetchContractorLeads = async () => {
-    setLoading(true);
-    try {
-      const userId = localStorage.getItem("user_id");
-      if (!userId) {
-        toast.error("User not logged in");
-        return;
+  useEffect(() => {
+    const fetchLeadPriceData = async () => {
+      const leadPriceData = await fetchLeadPrice();
+      if (leadPriceData) {
+        setPricePerLead((leadPriceData)['Price Per Lead']);
       }
+    };
+    fetchLeadPriceData();
+  }, []);
 
-      const { data, error } = await supabase
+  const handleStatusChange = async (leadId: string, status: string) => {
+    try {
+      const { error } = await supabase
         .from("Contractor_Leads")
-        .select("*")
-        .eq("contractor_id", userId)
-        .order("created_at", { ascending: false });
+        .update({ status: status })
+        .eq("id", leadId);
 
       if (error) throw error;
 
-      setContractorLeads(data || []);
+      setContractorLeads((prev) =>
+        prev.map((lead) =>
+          lead.id === leadId ? { ...lead, status: status } : lead
+        )
+      );
+
+      toast.success("Status updated successfully");
     } catch (error) {
-      console.error("Error fetching contractor leads:", error);
-      toast.error("Failed to fetch leads");
-    } finally {
-      setLoading(false);
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
     }
   };
 
+  const fetchContractorLeadsData = async () => {
+    setLoading(true);
+    const contractorLeadsData = await fetchContractorLeads();
+    if (contractorLeadsData) {
+      setContractorLeads(contractorLeadsData);
+    }
+    setLoading(false);
+  };
+  
   useEffect(() => {
-    fetchContractorLeads();
+    fetchContractorLeadsData();
+  }, []);
+
+  useEffect(() => {
+    const fetchMatchLeadsData = async () => {
+      const matchingLeads = await fetchMatchLeads();
+      if (matchingLeads) {
+        setPremiumLeads(matchingLeads);
+      }
+    };
+    fetchMatchLeadsData();
   }, []);
 
   const [loadingLeads, setLoadingLeads] = useState<Set<number>>(new Set());
@@ -73,21 +81,24 @@ export const Leads = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const itemsPerPage = 10;
-console.log('contractorLeads', contractorLeads);
-  // Filter data based on search term and status
+  
   const filteredData = contractorLeads.filter((lead) => {
+    const leadStatus = lead["status"];
+    
+    if (leadStatus === "close") {
+      return false;
+    }
+
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
       (lead["First Name"]?.toLowerCase() || "").includes(searchLower) ||
       (lead["Last Name"]?.toLowerCase() || "").includes(searchLower) ||
       (lead["Email Address"]?.toLowerCase() || "").includes(searchLower) ||
       (lead["Phone Number"] || "").includes(searchTerm) ||
-      (lead["Zip Code"] || "").includes(searchTerm) ||
+      (lead["Property Address"] || "").includes(searchTerm) ||
       (lead["Insurance Company"]?.toLowerCase() || "").includes(searchLower) ||
       (lead["Policy Number"] || "").includes(searchTerm);
 
-    // const leadStatus = getLeadStatus(lead.id?.toString() || "");
-    const leadStatus = lead["Status"];
     const matchesStatus = statusFilter === "All" || leadStatus.toLowerCase() === statusFilter.toLowerCase();
 
     return matchesSearch && matchesStatus;
@@ -131,8 +142,8 @@ console.log('contractorLeads', contractorLeads);
       icon: User
     },
     {
-      label: "Zip Code",
-      value: selectedLead["Zip Code"],
+      label: "Property Address",
+      value: selectedLead["Property Address"],
       icon: MapPin
     },
     {
@@ -146,11 +157,6 @@ console.log('contractorLeads', contractorLeads);
       icon: Mail,
       breakAll: true
     },
-    // {
-    //   label: "Location",
-    //   value: selectedLead["Location"],
-    //   icon: MapPin
-    // },
     {
       label: "Insurance Company",
       value: selectedLead["Insurance Company"],
@@ -161,40 +167,42 @@ console.log('contractorLeads', contractorLeads);
       value: selectedLead["Policy Number"],
       icon: Hash
     },
-    {
-      label: "Purchase Date",
-      value: new Date(selectedLead["Purchase Date"]).toLocaleDateString(),
-      icon: Calendar
-    }
+    // {
+    //   label: "Purchase Date",
+    //   value: new Date(selectedLead["Purchase Date"]).toLocaleDateString(),
+    //   icon: Calendar
+    // }
   ] : [];
 
-  async function handleBuyNow(lead: sampleLeadType) {
-    // Add this lead to loading set
+  async function handleBuyNow(lead: premiumLeadType) {
     setLoadingLeads((prev) => new Set(prev).add(lead.id));
-
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id;
+      const email = authData?.user?.email;
+  
+      if (!userId || !email) {
+        toast.error("User not logged in");
+        return;
+      }
+  
       const response = await fetch("/api/create-single-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // leadAmount: lead.price,
-          leadAmount: 50,
-          leadName: `${lead.firstName} ${lead.lastName}`,
+          leadAmount: pricePerLead,
+          leadName: `${lead["First Name"].slice(0, 2)}${"***"} ${lead["Last Name"].slice(0, 2)}${"***"}`,
+          email,
+          user_id: userId,
+          lead_id: lead.id,
         }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Checkout error:", errorData.error);
-        return;
-      }
-
+  
       const { url } = await response.json();
       window.location.href = url;
     } catch (error) {
-      console.error("Stripe checkout error:", error);
+      console.error(error);
     } finally {
-      // Remove this lead from loading set
       setLoadingLeads((prev) => {
         const newSet = new Set(prev);
         newSet.delete(lead.id);
@@ -202,8 +210,6 @@ console.log('contractorLeads', contractorLeads);
       });
     }
   }
-
-
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -265,7 +271,6 @@ console.log('contractorLeads', contractorLeads);
             <option value="hot">Hot Lead</option>
             <option value="warm">Warm Lead</option>
             <option value="cold">Cold Lead</option>
-            <option value="close">Close</option>
           </select>
           <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
         </div>
@@ -282,13 +287,10 @@ console.log('contractorLeads', contractorLeads);
                     Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Zip Code
+                    Contact Info
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone no
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
+                    Property Address
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -299,48 +301,45 @@ console.log('contractorLeads', contractorLeads);
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {/* Sample Leads - Blurred Preview */}
-                {sampleLeads.map((lead: sampleLeadType) => (
+                {premiumLeads.slice(0, 3).map((lead: premiumLeadType) => (
                   <tr key={lead.id} className={`border-l-4`}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-3">
                         <div className="text-sm font-bold text-gray-400 select-none">
-                          {`${lead.firstName?.slice(0, 2) || ""}${"*".repeat(
-                            Math.max((lead.firstName?.length || 0) - 2, 0)
-                          )} ${lead.lastName?.slice(0, 2) || ""}${"*".repeat(Math.max((lead.lastName?.length || 0) - 2, 0))}`}
+                          {`${lead["First Name"]?.slice(0, 2) || ""}${"*".repeat(
+                            Math.max((lead["First Name"]?.length || 0) - 2, 0)
+                          )} ${lead["Last Name"]?.slice(0, 2) || ""}${"*".repeat(Math.max((lead["Last Name"]?.length || 0) - 2, 0))}`}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm font-medium text-gray-400 select-none">{`${lead.zipCode?.slice(
-                          0,
-                          2
-                        ) || ""}${"*".repeat(Math.max((lead.zipCode?.length || 0) - 2, 0))}`}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
                         <Phone className="h-3 w-3 text-gray-400 mr-1" />
-                        <span className="text-sm text-gray-400 select-none">{`${lead.phone.slice(0, 2)}${"*".repeat(
-                          Math.max(lead.phone.length - 2, 0)
+                        <span className="text-sm text-gray-400 select-none">{`${lead["Phone Number"].slice(0, 2)}${"*".repeat(
+                          Math.max(lead["Phone Number"].length - 2, 0)
                         )}`}</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <Mail className="h-3 w-3 text-gray-400 mr-1" />
-                        <span className="text-sm text-gray-400 select-none">{`${lead.email?.slice(0, 2) || ""}${"*".repeat(
-                          Math.max((lead.email?.length || 0) - 2, 0)
+                        <span className="text-sm text-gray-400 select-none">{`${lead["Email Address"]?.slice(0, 2) || ""}${"*".repeat(
+                          Math.max((lead["Email Address"]?.length || 0) - 2, 0)
                         )}`}</span>
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 text-gray-400 mr-2" />
+                        <span className="text-sm font-medium text-gray-400 select-none">{`${lead["Property Address"]?.slice(
+                          0,
+                          2
+                        ) || ""}${"*".repeat(Math.max((lead["Property Address"]?.length || 0) - 2, 0))}`}</span>
+                      </div>
+                    </td>
+                    <td></td>
                     <td className="px-6 py-4 whitespace-nowrap" colSpan={2}>
-                      <div className="flex items-center justify-center space-x-2">
-                        {/* <span className={`text-sm font-bold`}>${lead.price}</span> */}
+                      <div className="flex space-x-2">
                         <Button
-                          disabled={loadingLeads.has(lead.id)}
+                          disabled={loadingLeads.has(lead["id"])}
                           size="sm"
                           className={`text-white bg-[#122E5F] hover:bg-[#0f2347]/80 text-xs px-3 py-1`}
                           onClick={() => handleBuyNow(lead)}
@@ -369,7 +368,7 @@ console.log('contractorLeads', contractorLeads);
                     </td>
                   </tr>
                 ) : currentData.length > 0 ? (
-                  currentData.map((lead: any, index: number) => (
+                  currentData.map((lead: purchasedLeadType, index: number) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
@@ -379,27 +378,25 @@ console.log('contractorLeads', contractorLeads);
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm font-medium text-gray-900">{lead["Zip Code"]}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-black">
-                        <div className="space-y-1 flex items-center">
+                        <div className="space-y-1 flex items-center text-sm font-medium text-gray-600">
                           <Phone className="h-3 w-3 text-gray-400 mr-1" />
                           {lead["Phone Number"]}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-black">
-                        <div className="space-y-1 flex items-center">
+                        <div className="space-y-1 flex items-center text-sm font-medium text-gray-600">
                           <Mail className="h-3 w-3 text-gray-400 mr-1" />
                           {lead["Email Address"]}
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center text-sm font-medium text-gray-600">
+                          <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+                          {lead["Property Address"]}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <Select
-                          value={getLeadStatus(lead.id)}
-                          onValueChange={(val) => handleStatusChange(lead.id, val)}
+                          value={lead["status"] || "open"}
+                          onValueChange={(val) => handleStatusChange(lead["id"], val)}
                         >
                           <SelectTrigger className="w-32 h-8 text-xs">
                             <SelectValue />

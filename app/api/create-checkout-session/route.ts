@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    const { quantity, leadAmount } = await request.json();
+    const { quantity, leadAmount, userId } = await request.json();
 
     if (!quantity || !leadAmount) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
@@ -26,13 +26,17 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: `${request.headers.get('origin')}/success`,
+      success_url: `${request.headers.get('origin')}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${request.headers.get('origin')}/cancel`,
+      metadata: {
+        quantity: quantity.toString(),
+        contractor_id: userId,
+      },
     });
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: 'Checkout session creation failed' }, { status: 500 });
+    return NextResponse.json({ error: (err as Error).message || "Checkout session creation failed" }, { status: 500 });
   }
 }

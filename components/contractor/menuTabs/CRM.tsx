@@ -1,17 +1,5 @@
-import React, { useState } from "react";
-import {
-  MapPin,
-  Eye,
-  X,
-  Phone,
-  Mail,
-  FileText,
-  Building,
-  Search,
-  UserPlus,
-  Hash,
-  User,
-} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { MapPin, Eye, Phone, Mail, FileText, Building, Search, UserPlus, Hash, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +7,10 @@ import { DetailPopup } from "@/components/ui/DetailPopup";
 import { FormPopup } from "@/components/ui/FormPopup";
 import { Pagination } from "@/components/ui/pagination";
 import { crmDataType } from "@/types/DashboardTypes";
-import { crmData } from "./Data";
 import { toast } from "react-toastify";
-import * as yup from "yup";
 import { FormField } from "@/types/Types";
+import { supabase } from "@/lib/supabase";
+import { crmMemberSchema } from "@/validations/contractor/schema";
 
 export const CRM = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -30,45 +18,29 @@ export const CRM = () => {
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [crmLeads, setCRMLeads] = useState<crmDataType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const itemsPerPage = 10;
-
   // Filter data based on search term
-  const filteredData = crmData.filter((lead) =>
-    lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.phoneno.includes(searchTerm) ||
-    lead.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.insuranceCompany.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.policy.includes(searchTerm)
+  const filteredData = crmLeads.filter(
+    (lead) =>
+      lead["status"] === "close" &&
+      (lead["First Name"]?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead["Email Address"]
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        lead["Phone Number"]?.includes(searchTerm) ||
+        lead["Property Address"]?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead["Insurance Company"]
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        lead["Policy Number"]?.includes(searchTerm))
   );
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentData = filteredData.slice(startIndex, endIndex);
-
-  // Validation schema for CRM member form
-  const crmMemberSchema = yup.object().shape({
-    name: yup.string()
-      .required('Full name is required')
-      .min(2, 'Name must be at least 2 characters')
-      .max(50, 'Name must be less than 50 characters'),
-    phoneno: yup.string()
-      .required('Phone number is required')
-      .matches(/^\(\d{3}\) \d{3}-\d{4}$/, 'Please enter a valid phone number in format (555) 123-4567'),
-    email: yup.string()
-      .required('Email is required')
-      .email('Please enter a valid email address'),
-    location: yup.string()
-      .required('Location is required')
-      .min(2, 'Location must be at least 2 characters'),
-    insuranceCompany: yup.string()
-      .required('Insurance company is required')
-      .min(2, 'Insurance company must be at least 2 characters'),
-    policy: yup.string()
-      .required('Policy number is required')
-      .min(2, 'Policy number must be at least 2 characters')
-  });
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -91,89 +63,134 @@ export const CRM = () => {
     setShowModal(false);
   };
 
-  const leadFields = selectedLead ? [
-    {
-      label: "Full Name",
-      value: selectedLead.name,
-      icon: User
-    },
-    {
-      label: "Phone",
-      value: selectedLead.phoneno,
-      icon: Phone
-    },
-    {
-      label: "Email",
-      value: selectedLead.email,
-      icon: Mail,
-      breakAll: true
-    },
-    {
-      label: "Location",
-      value: selectedLead.location,
-      icon: MapPin
-    },
-    {
-      label: "Insurance Company",
-      value: selectedLead.insuranceCompany,
-      icon: Building,
-      whitespaceNowrap: true
-    },
-    {
-      label: "Policy Number",
-      value: selectedLead.policy,
-      icon: Hash
-    }
-  ] : [];
+  const leadFields = selectedLead
+    ? [
+        {
+          label: "First Name",
+          value: selectedLead["First Name"],
+          icon: User,
+        },
+        {
+          label: "Last Name",
+          value: selectedLead["Last Name"],
+          icon: User,
+        },
+        {
+          label: "Phone",
+          value: selectedLead["Phone Number"],
+          icon: Phone,
+        },
+        {
+          label: "Email",
+          value: selectedLead["Email Address"],
+          icon: Mail,
+          breakAll: true,
+        },
+        {
+          label: "Property Address",
+          value: selectedLead["Property Address"],
+          icon: MapPin,
+        },
+        {
+          label: "Insurance Company",
+          value: selectedLead["Insurance Company"],
+          icon: Building,
+          whitespaceNowrap: true,
+        },
+        {
+          label: "Policy Number",
+          value: selectedLead["Policy Number"],
+          icon: Hash,
+        },
+      ]
+    : [];
 
   const addMemberFields = [
     {
-      name: "name",
-      label: "Full Name",
+      name: "firstName",
+      label: "First Name",
       type: "text",
-      placeholder: "John Smith",
-      required: true
+      placeholder: "John",
+      required: true,
+    },
+    {
+      name: "lastName",
+      label: "Last Name",
+      type: "text",
+      placeholder: "Doe",
+      required: true,
     },
     {
       name: "phoneno",
       label: "Phone Number",
       type: "tel",
       placeholder: "(555) 123-4567",
-      required: true
+      required: true,
     },
     {
       name: "email",
       label: "Email Address",
       type: "email",
       placeholder: "john@company.com",
-      required: true
+      required: true,
     },
     {
-      name: "location",
-      label: "Location",
+      name: "propertyAddress",
+      label: "Property Address",
       type: "text",
-      placeholder: "Houston, TX",
-      required: true
+      placeholder: "Start typing your business address...",
+      required: true,
+      maxLength: 5,
     },
     {
       name: "insuranceCompany",
       label: "Insurance Company",
       type: "text",
       placeholder: "State Farm",
-      required: true
+      required: true,
     },
     {
       name: "policy",
       label: "Policy Number",
       type: "text",
       placeholder: "SF123456789",
-      required: true
+      required: true,
+    },
+  ];
+
+  const fetchCRMLeads = async () => {
+    setIsLoading(true);
+    try {
+      const userId = localStorage.getItem("user_id");
+      if (!userId) {
+        toast.error("User not logged in");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("Contractor_Leads")
+        .select("*")
+        .eq("contractor_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setCRMLeads(data || []);
+    } catch (error) {
+      console.error("Error fetching contractor leads:", error);
+      toast.error("Failed to fetch leads");
+    } finally {
+      setIsLoading(false);
     }
-  ]
+  };
+
+  useEffect(() => {
+    fetchCRMLeads();
+  }, []);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   const handleAddMember = () => {
@@ -184,10 +201,38 @@ export const CRM = () => {
     setShowAddMemberModal(false);
   };
 
-  const handleFormSubmit = (formData: Record<string, any>) => {
-    console.log('New member data:', formData);
-    toast.success("Member added successfully");
-    handleCloseAddMemberModal();
+  const handleFormSubmit = async (formData: Record<string, any>) => {
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData?.user) {
+        toast.error("User not logged in");
+        return;
+      }
+      const userId = authData.user.id;
+
+      const { error } = await supabase.from("Contractor_Leads").insert({
+        contractor_id: userId,
+        "First Name": formData.firstName,
+        "Last Name": formData.lastName,
+        "Phone Number": formData.phoneno,
+        "Email Address": formData.email,
+        "Property Address": formData.propertyAddress,
+        "Insurance Company": formData.insuranceCompany,
+        "Policy Number": formData.policy,
+        status: "close",
+        "Latitude": formData.latitude,
+        "Longitude": formData.longitude,
+      });
+
+      if (error) throw error;
+
+      toast.success("Member added successfully");
+      handleCloseAddMemberModal();
+      fetchCRMLeads();
+    } catch (error) {
+      console.error("Error adding member:", error);
+      toast.error("Failed to add member");
+    }
   };
 
   return (
@@ -196,17 +241,17 @@ export const CRM = () => {
       <div className="flex flex-col md:flex-row items-center justify-between">
         <div className="text-center flex-1">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Customer Relationship Management
+            Customer Relationship Management
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             CRM turns customer data into meaningful business insights
           </p>
         </div>
-        
+
         <div className="md:flex-shrink-0 w-full md:w-auto">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="bg-[#122E5F] hover:bg-[#183B7A]/80 text-white mt-4 md:mt-0 hover:text-white w-full md:w-auto"
             onClick={handleAddMember}
           >
@@ -241,13 +286,10 @@ export const CRM = () => {
                     Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone No
+                    Contact Info
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
+                    Property Address
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Action
@@ -255,44 +297,53 @@ export const CRM = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {currentData.length > 0 ? (
-                  currentData.map((lead, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-bold text-[#122E5F]">
-                        {lead.name}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900 flex items-center">
-                        <Phone className="h-3 w-3 mr-1 text-gray-400" />
-                        {lead.phoneno}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900 flex items-center">
-                        <Mail className="h-3 w-3 mr-1 text-gray-400" />
-                        {lead.email}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900 flex items-center">
-                        <MapPin className="h-3 w-3 mr-1 text-gray-400" />
-                        {lead.location}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-[#122E5F] text-[#122E5F] hover:bg-[#122E5F] hover:text-white"
-                        onClick={() => handleViewLead(lead)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
+                        <p className="mt-2 text-sm text-gray-500">
+                          Loading leads...
+                        </p>
+                      </div>
                     </td>
                   </tr>
+                ) : currentData.length > 0 ? (
+                  currentData.map((lead, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-bold text-[#122E5F]">
+                          {lead["First Name"]}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900 flex items-center">
+                          <Phone className="h-3 w-3 mr-1 text-gray-400" />
+                          {lead["Phone Number"]}
+                        </span>
+                        <span className="text-sm text-gray-900 flex items-center">
+                          <Mail className="h-3 w-3 mr-1 text-gray-400" />
+                          {lead["Email Address"]}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900 flex items-center">
+                          <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+                          {lead["Property Address"]}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-[#122E5F] text-[#122E5F] hover:bg-[#122E5F] hover:text-white"
+                          onClick={() => handleViewLead(lead)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </td>
+                    </tr>
                   ))
                 ) : (
                   <tr>
@@ -300,11 +351,13 @@ export const CRM = () => {
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <Search className="h-12 w-12 text-gray-300" />
                         <div>
-                          <p className="text-lg font-medium text-gray-900">No leads found</p>
+                          <p className="text-lg font-medium text-gray-900">
+                            No leads found
+                          </p>
                           <p className="text-sm text-gray-500">
-                            {searchTerm 
+                            {searchTerm
                               ? `No results for "${searchTerm}". Try adjusting your search terms.`
-                              : 'No leads available.'}
+                              : "No leads available."}
                           </p>
                         </div>
                       </div>

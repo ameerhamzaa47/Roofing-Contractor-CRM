@@ -16,8 +16,9 @@ export const fetchContractors = async () => {
     const { data, error } = await supabase
       .from("Roofing_Auth")
       .select(
-        `"Full Name", "Title", "Phone Number", "Email Address", "Business Address", "Service Radius", user_id`
-      );
+        `"Full Name", "Title", "Phone Number", "Email Address", "Business Address", "Service Radius", "Latitude", "Longitude", user_id`
+      )
+      .in("Is Verified", ["confirmed", "assigned"])
 
     if (error) throw error;
 
@@ -30,6 +31,8 @@ export const fetchContractors = async () => {
         email: item["Email Address"] || "",
         businessAddress: item["Business Address"] || "",
         serviceRadius: item["Service Radius"] || "",
+        latitude: item["Latitude"] || null,
+        longitude: item["Longitude"] || null,
       })) || [];
 
     return mappedData;
@@ -50,6 +53,23 @@ export const fetchLeads = async () => {
     console.error("Error fetching leads:", error);
   } else {
     return data || [];
+  }
+};
+
+export const fetchRequestLeads = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("Leads_Request")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    } else {
+      return data || [];
+    }
+  } catch (error) {
+    toast.error("Failed to fetch request leads");
   }
 };
 

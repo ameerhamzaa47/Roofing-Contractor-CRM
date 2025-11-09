@@ -1,135 +1,132 @@
 "use client";
-
-import {
-  Home,
-  FileText,
-  DollarSign,
-  BarChart3,
-  Users,
-  User,
-  CheckCircle,
-  Phone,
-  Mail,
-  MapPin,
-  Calendar,
-  Hash,
-  Building,
-} from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Home, FileText, DollarSign, BarChart3, Users, User, CheckCircle, Phone, Mail, MapPin, Hash, Building, Search, } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DetailPopup } from "@/components/ui/DetailPopup";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
-import { purchasedLeads, sampleLeads } from "./Data";
-import { sampleLeadType } from "@/types/DashboardTypes";
+import { purchasedLeadType, premiumLeadType } from "@/types/DashboardTypes";
 import Link from "next/link";
-
+import { supabase } from "@/lib/supabase";
+import { toast } from "react-toastify";
+import { fetchContractorLeads, fetchMatchLeads } from "./Data";
+import { fetchLeadPrice } from "@/lib/leadPrice";
+import { freeLeadsAssign } from "@/lib/freeLeadsAssign";
+import LoadingDots from "@/lib/LoadingDots";
+import { useRouter } from "next/navigation";
 export const DashBoard = () => {
   const { getCurrentUserFullName } = useAuth();
   const currentUserFullName = getCurrentUserFullName();
   const [loadingLeads, setLoadingLeads] = useState<Set<number>>(new Set());
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState<boolean>(false);
-
-  const handleCloseModal = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [contractorLeads, setContractorLeads] = useState<any[]>([]);
+  const [premiumLeads, setPremiumLeads] = useState<any[]>([]);
+  const [pricePerLead, setPricePerLead] = useState<number>(0);
+  const hasRun = useRef(false);
+  const router = useRouter();
+    const handleCloseModal = () => {
     setIsLeadModalOpen(false);
     setSelectedLead(null);
   };
+
+  useEffect(() => {
+    const fetchLeadPriceData = async () => {
+      const leadPriceData = await fetchLeadPrice();
+      if (leadPriceData) {
+        setPricePerLead((leadPriceData)['Price Per Lead']);
+      }
+    };
+    fetchLeadPriceData();
+  }, []);
 
   const leadFields = selectedLead
     ? [
         {
           label: "Full Name",
-          value: `${selectedLead.firstName} ${selectedLead.lastName}`,
+          value: `${selectedLead["First Name"]} ${selectedLead["Last Name"]}`,
           icon: User,
         },
         {
           label: "Phone",
-          value: selectedLead.phoneno,
+          value: selectedLead["Phone Number"],
           icon: Phone,
         },
         {
           label: "Email",
-          value: selectedLead.email,
+          value: selectedLead["Email Address"],
           icon: Mail,
           breakAll: true,
         },
         {
-          label: "Location",
-          value: selectedLead.location,
+          label: "Property Address",
+          value: selectedLead["Property Address"],
           icon: MapPin,
         },
         {
           label: "Insurance Company",
-          value: selectedLead.company,
+          value: selectedLead["Insurance Company"],
           icon: Building,
           whitespaceNowrap: true,
         },
         {
           label: "Policy Number",
-          value: selectedLead.policy,
+          value: selectedLead["Policy Number"],
           icon: Hash,
-        },
-        {
-          label: "Purchase Date",
-          value: new Date(selectedLead.purchaseDate).toLocaleDateString(),
-          icon: Calendar,
-        },
-        {
-          label: "Zip Code",
-          value: selectedLead.zipCode,
-          icon: MapPin,
         },
       ]
     : [];
 
-  // async function handleBuyNow(lead: sampleLeadType) {
-  //   // Add this lead to loading set
-  //   setLoadingLeads((prev) => new Set(prev).add(lead.id));
+  const fetchContractorLeadsData = async () => {
+    setIsLoading(true);
+    const contractorLeadsData = await fetchContractorLeads();
+    if (contractorLeadsData) {
+      setContractorLeads(contractorLeadsData);
+    }
+    setIsLoading(false);
+  };
 
-  //   try {
-  //     const response = await fetch("/api/create-single-checkout-session", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         // leadAmount: lead.price,
-  //         leadAmount: 50,
-  //         leadName: `${lead.firstName} ${lead.lastName}`,
-  //       }),
-  //     });
+  useEffect(() => {
+    fetchContractorLeadsData();
+  }, []);
 
-  //     if (!response.ok) {
-  //       const errorData = await response.json();
-  //       console.error("Checkout error:", errorData.error);
-  //       return;
-  //     }
+  useEffect(() => {
+    const fetchMatchLeadsData = async () => {
+      setIsLoading(true);
+      const matchingLeads = await fetchMatchLeads();
+      if (matchingLeads) {
+        setPremiumLeads(matchingLeads);
+      }
+    };
+    fetchMatchLeadsData();
+  }, []);
 
-  //     const { url } = await response.json();
-  //     window.location.href = url;
-  //   } catch (error) {
-  //     console.error("Stripe checkout error:", error);
-  //   } finally {
-  //     // Remove this lead from loading set
-  //     setLoadingLeads((prev) => {
-  //       const newSet = new Set(prev);
-  //       newSet.delete(lead.id);
-  //       return newSet;
-  //     });
-  //   }
-  // }
-
-  async function handleBuyNow(lead: sampleLeadType) {
+  async function handleBuyNow(lead: premiumLeadType) {
     setLoadingLeads((prev) => new Set(prev).add(lead.id));
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id;
+      const email = authData?.user?.email;
+  
+      if (!userId || !email) {
+        toast.error("User not logged in");
+        return;
+      }
+  
       const response = await fetch("/api/create-single-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leadAmount: 50,
-          leadName: "Test Lead",
-          email: localStorage.getItem("loggedInUser"),
+          leadAmount: pricePerLead,
+          leadName: `${lead["First Name"].slice(0, 2)}${"***"} ${lead["Last Name"].slice(0, 2)}${"***"}`,
+          email,
+          user_id: userId,
+          lead_id: lead.id,
         }),
       });
+  
       const { url } = await response.json();
       window.location.href = url;
     } catch (error) {
@@ -143,8 +140,33 @@ export const DashBoard = () => {
     }
   }
 
+  useEffect(() => {
+    const verifyAndAssignLeads = async () => {
+      if (hasRun.current) return;
+      hasRun.current = true;
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id;
+      if (!userId) return;
+      console.log("userId", userId);
+  
+      const { data: userRecord } = await supabase
+        .from("Roofing_Auth")
+        .select('"Is Verified"')
+        .eq("user_id", userId)
+        .single();
+  
+      if (userRecord?.["Is Verified"] === "confirmed") {
+        console.log("userRecord", userRecord["Is Verified"]);
+        console.log("✅ User is verified, auto assigning leads...");
+        await freeLeadsAssign(userId);
+        fetchContractorLeadsData();
+      }
+    };
+    verifyAndAssignLeads();
+  }, []);
+
   const handleLeadClick = (lead: any) => {
-    console.log("lead", lead);
+    console.log("lead==", lead);
     setSelectedLead(lead);
     setIsLeadModalOpen(true);
   };
@@ -175,7 +197,7 @@ export const DashBoard = () => {
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-blue-50 to-white">
+        <Card onClick={()=>{router.push('/contractor/leads')}} className="border-0 cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-blue-50 to-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold text-[#286BBD]">
               Total Leads
@@ -185,11 +207,15 @@ export const DashBoard = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl text-[#286BBD] font-bold mb-1">2,847</div>
+            <div className="text-3xl text-[#286BBD] font-bold mb-1">
+              {contractorLeads.length ? contractorLeads.length : (
+                  <LoadingDots />
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-green-50 to-white">
+        <Card onClick={()=>{router.push('/contractor/leads')}} className="border-0 cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-green-50 to-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold text-[#286BBD]">
               Active Leads
@@ -199,11 +225,16 @@ export const DashBoard = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl text-green-600 font-bold mb-1">150</div>
+            <div className="text-3xl text-green-600 font-bold mb-1">
+              {contractorLeads.length ? 
+              contractorLeads.filter((lead) => lead.status !== "close").length : (
+                <LoadingDots />
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-red-50 to-white">
+        <Card onClick={()=>{router.push('/contractor/crm')}} className="border-0 cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-red-50 to-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold text-[#286BBD]">
               Closed Leads
@@ -213,7 +244,11 @@ export const DashBoard = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl text-red-600 font-bold mb-1">1,369</div>
+            <div className="text-3xl text-red-600 font-bold mb-1">
+              {contractorLeads.length ?  contractorLeads.filter((lead) => lead.status === "close").length : (
+                <LoadingDots />
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -241,45 +276,61 @@ export const DashBoard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {purchasedLeads.slice(0, 3).map((activity, index) => (
-                <div
-                  key={index}
-                  onClick={() => handleLeadClick(activity)}
-                  className="flex flex-col lg:flex-row items-center justify-between p-4 rounded-lg bg-white border border-gray-200 hover:border-[#286BBD]/30 hover:shadow-md transition-all duration-200 cursor-pointer group"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#286BBD]/10 to-[#2563eb]/10 flex items-center justify-center group-hover:from-[#286BBD]/20 group-hover:to-[#2563eb]/20 transition-all duration-200">
-                      <User className="h-6 w-6 text-[#286BBD]" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Loading leads...
+                    </p>
+                  </div>
+                </div>
+              ) : contractorLeads.filter((lead) => lead.status !== "close")
+                  .length > 0 ? (
+                contractorLeads
+                  .filter((lead) => lead.status !== "close")
+                  .slice(0, 3)
+                  .map((lead: purchasedLeadType, index: number) => (
+                    <div
+                      key={index}
+                      onClick={() => handleLeadClick(lead)}
+                      className="flex flex-col lg:flex-row items-center justify-center md:justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-all duration-200"
+                    >
+                      <div className="w-full md:w-1/2">
+                      <div className="text-sm flex items-center font-semibold text-gray-900 transition-colors">
+                        <User className="h-4 w-4 mr-1" />
                         <h4 className="font-semibold text-gray-900 text-base">
-                          {activity.firstName} {activity.lastName}
+                          {lead["First Name"]} {lead["Last Name"]}
                         </h4>
                       </div>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <div className="mt-1 flex items-center text-sm text-gray-600 transition-colors">
                         <div className="flex items-center space-x-1">
-                          <MapPin className="h-3 w-3" />
-                          <span>{activity.location}</span>
+                          <MapPin className="h-4 w-4" />
+                          <span className="w-52 truncate">{lead["Property Address"]}</span>
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex flex-col items-end space-y-2">
-                    <div className="flex flex-col items-end space-y-1">
-                      <div className="text-sm text-[#286BBD] flex items-center hover:text-[#1d4ed8] transition-colors">
+                    <div className="flex w-full md:w-auto flex-col mt-2 space-y-2">
+                      <div className="text-sm text-[#286BBD] flex md:justify-end hover:text-[#1d4ed8] transition-colors">
                         <Phone className="h-4 w-4 mr-1" />
-                        <span className="font-medium">{activity.phoneno}</span>
-                      </div>
-                      <div className="text-sm text-gray-600 flex items-center break-all hover:text-gray-800 transition-colors">
-                        <Mail className="h-4 w-4 mr-1" />
-                        <span className="font-medium">{activity.email}</span>
+                        <span className="font-medium">{lead["Phone Number"]}</span>
                       </div>
                     </div>
+                    </div>
+                  ))
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="h-8 w-8 text-gray-400" />
                   </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No leads found
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    There are currently no leads in the system
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -296,7 +347,29 @@ export const DashBoard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {sampleLeads.map((lead: sampleLeadType) => (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Loading leads...
+                  </p>
+                </div>
+              </div>
+              ) : premiumLeads.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No premium leads available
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    There are currently no leads within your service radius
+                  </p>
+                </div>
+              ) : (
+                premiumLeads.slice(0, 3).map((lead: premiumLeadType) => (
                 <div
                   key={lead.id}
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
@@ -305,48 +378,25 @@ export const DashBoard = () => {
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <div className="text-sm font-bold text-gray-400 select-none">
-                          {`${lead.firstName.slice(0, 2)}${"*".repeat(
-                            Math.max(lead.firstName.length - 2, 0)
-                          )} ${lead.lastName.slice(0, 2)}${"*".repeat(
-                            Math.max(lead.lastName.length - 2, 0)
-                          )}`}
+                          {`${lead["First Name"].slice(0, 2)}${"***"} ${lead["Last Name"].slice(0, 2)}${"***"}`}
                         </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs text-gray-500">
                         <div className="flex items-center">
                           <MapPin className="h-3 w-3 mr-1" />
-                          <span className="select-none">{`${lead.zipCode.slice(
-                            0,
-                            2
-                          )}${"*".repeat(
-                            Math.max(lead.zipCode.length - 2, 0)
-                          )}`}</span>
+                          <span className="select-none">{`${lead["Property Address"].slice(0,2)}${"***"}`}</span>
                         </div>
                         <div className="flex items-center">
                           <Phone className="h-3 w-3 mr-1" />
-                          <span className="select-none">{`${lead.phone.slice(
-                            0,
-                            2
-                          )}${"*".repeat(
-                            Math.max(lead.phone.length - 2, 0)
-                          )}`}</span>
+                          <span className="select-none">{`${lead["Phone Number"].slice(0,2)}${"***"}`}</span>
                         </div>
                         <div className="flex items-center">
                           <Mail className="h-3 w-3 mr-1" />
-                          <span className="select-none">{`${lead.email.slice(
-                            0,
-                            2
-                          )}${"*".repeat(
-                            Math.max(lead.email.length - 2, 0)
-                          )}`}</span>
+                          <span className="select-none">{`${lead["Email Address"].slice(0,2)}${"***"}`}</span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center justify-between md:justify-end space-x-3 md:ml-4">
-                      <div className="text-left md:text-right">
-                        {/* <div className="text-lg font-bold text-[#286BBD]">${lead.price}</div>
-                        <div className="text-xs text-gray-500">per lead</div> */}
-                      </div>
                       <Button
                         size="sm"
                         onClick={() => handleBuyNow(lead)}
@@ -360,7 +410,8 @@ export const DashBoard = () => {
                     </div>
                   </div>
                 </div>
-              ))}
+                ))
+              )}
               <div className="text-center pt-2">
                 <Link href="/contractor/leads">
                   <Button

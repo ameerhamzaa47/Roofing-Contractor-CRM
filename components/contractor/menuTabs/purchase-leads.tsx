@@ -1,31 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart } from "lucide-react";
-import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
+import { purchaseFormType } from "@/types/DashboardTypes";
+import { fetchLeadPrice } from "@/lib/leadPrice";
 
 const PurchaseLeads = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [purchaseForm, setPurchaseForm] = useState({
-    quantity: "1",
-    zipCode: "",
-  });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [pricePerLead, setPricePerLead] = useState<number>(0);
+  const router = useRouter();
+  const [purchaseForm, setPurchaseForm] = useState<purchaseFormType>({ quantity: "1" });
+
+  useEffect(() => {
+    const fetchLeadPriceData = async () => {
+      const leadPriceData = await fetchLeadPrice();
+      if (leadPriceData) {
+        setPricePerLead((leadPriceData)['Price Per Lead']);
+      }
+    };
+    fetchLeadPriceData();
+  }, []);
+  
 
   const handlePurchaseInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setPurchaseForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handlePurchaseSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Purchase form data:", purchaseForm);
-    // TODO: Add purchase logic here
+    
+    if (name === "quantity") {
+      const numericValue = value.replace(/[^0-9]/g, "");
+      setPurchaseForm((prev) => ({
+        ...prev,
+        [name]: numericValue,
+      }));
+    } else {
+      setPurchaseForm((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   async function handlePurchaseSubmitStripe(e: React.FormEvent) {
@@ -37,7 +52,7 @@ const PurchaseLeads = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           quantity: purchaseForm.quantity,
-          leadAmount: 50,
+          leadAmount: pricePerLead,
         }),
       });
 
@@ -48,7 +63,7 @@ const PurchaseLeads = () => {
       }
 
       const { url } = await response.json();
-      window.location.href = url;
+      router.push(url);
     } catch (error) {
       console.error("Checkout error:", error);
     } finally {
@@ -58,7 +73,6 @@ const PurchaseLeads = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Purchase Premium Leads</h2>
@@ -66,7 +80,6 @@ const PurchaseLeads = () => {
         </div>
       </div>
 
-      {/* Purchase Form */}
       <Card className="border-0 shadow-lg max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -76,41 +89,30 @@ const PurchaseLeads = () => {
           <CardDescription>Specify your target area and quantity to get started</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handlePurchaseSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handlePurchaseSubmitStripe} className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Quantity *</label>
                 <Input
                   name="quantity"
                   type="number"
-                  min="1"
-                  max="50"
                   value={purchaseForm.quantity}
                   onChange={handlePurchaseInputChange}
+                  onKeyDown={(e) => {
+                    if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   placeholder="1"
                   required
                   className="h-10 text-sm"
                 />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Target Zip Code *</label>
-                <Input
-                  name="zipCode"
-                  value={purchaseForm.zipCode}
-                  onChange={handlePurchaseInputChange}
-                  placeholder="75201"
-                  required
-                  className="h-10 text-sm"
-                />
-              </div>
             </div>
 
-            {/* Pricing Summary */}
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-900">Lead Price:</span>
-                  <span className="text-lg font-bold text-[#286BBD]">$50 per lead</span>
+                  <span className="text-lg font-bold text-[#286BBD]">${pricePerLead} per lead</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-900">Quantity:</span>
@@ -120,20 +122,18 @@ const PurchaseLeads = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold text-gray-900">Total:</span>
                     <span className="text-xl font-bold text-[#286BBD]">
-                      ${(parseInt(purchaseForm.quantity || "1") * 50).toLocaleString()}
+                    ${(parseInt(purchaseForm.quantity) * pricePerLead) ? (parseInt(purchaseForm.quantity) * pricePerLead) : 0}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex justify-end space-x-3 pt-4">
               <Button
-                disabled={isLoading}
+                disabled={isLoading || purchaseForm.quantity === "0" || purchaseForm.quantity === ""}
                 type="submit"
                 className="px-6 py-2 text-sm bg-[#122E5F] hover:bg-[#0f2347]/80 text-white"
-                onClick={handlePurchaseSubmitStripe}
               >
                 {isLoading ? (
                   "Processing..."

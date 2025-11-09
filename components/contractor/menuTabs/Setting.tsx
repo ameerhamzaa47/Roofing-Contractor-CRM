@@ -6,99 +6,48 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FormPopup } from "@/components/ui/FormPopup";
+import { AddressSuggestion } from "@/components/ui/AddressSuggestion";
 import { settingType } from "@/types/DashboardTypes";
 import { FormField } from "@/types/Types";
-import { useAuth } from "@/hooks/useAuth";
 import { toast } from "react-toastify";
-import * as yup from "yup";
-import { useRouter } from "next/navigation";
+import { paymentMethodSchema } from "@/validations/contractor/schema";
 import { supabase } from "@/lib/supabase";
 import { paymentMethodType } from "@/types/DashboardTypes";
+import { PlacePrediction } from "@/types/AuthType";
+import LoadingDots from "@/lib/LoadingDots";
 
 export const Setting = () => {
-  const { user, getCurrentUserFullName } = useAuth();
-  const currentUserFullName = getCurrentUserFullName();
-  const router = useRouter();
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
   const [cards, setCards] = useState<paymentMethodType[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isPaymentLoading, setIsPaymentLoading] = useState<boolean>(false);
+  const [isProfileLoading, setIsProfileLoading] = useState<boolean>(false);
   const [formData, setFormData] = useState<settingType>({
     fullName: "",
     email: "",
     serviceRadius: "",
     businessAddress: "",
-  });
-
-  // Validation schema for payment method form
-  const paymentMethodSchema = yup.object().shape({
-    cardNumber: yup
-      .string()
-      .required("Card number is required")
-      .matches(
-        /^\d{4}\s\d{4}\s\d{4}\s\d{4}$/,
-        "Please enter a valid 16-digit card number"
-      ),
-    cardholderName: yup
-      .string()
-      .required("Cardholder name is required")
-      .min(2, "Name must be at least 2 characters")
-      .max(50, "Name must be less than 50 characters"),
-    expiryDate: yup
-      .string()
-      .required("Expiry date is required")
-      .matches(
-        /^(0[1-9]|1[0-2])\/\d{2}$/,
-        "Please enter a valid expiry date (MM/YY)"
-      )
-      .test(
-        "future-date",
-        "Expiry date cannot be in the past",
-        function (value) {
-          if (!value) return true; // Let required validation handle empty values
-
-          const [month, year] = value.split("/");
-          const expiryYear = parseInt(`20${year}`);
-          const currentYear = new Date().getFullYear();
-          const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-11
-
-          // If year is in the future, it's valid
-          if (expiryYear > currentYear) return true;
-
-          // If year is current year, check if month is current or future
-          if (expiryYear === currentYear) {
-            return parseInt(month) >= currentMonth;
-          }
-
-          // Year is in the past
-          return false;
-        }
-      ),
-      cvv: yup
-      .string()
-      .required("CVV is required")
-      .matches(/^\d{3}$/, "Please enter a valid CVV (3 digits only)"),
-    cardType: yup
-      .string()
-      .required("Card type is required")
-      .oneOf(["visa", "mastercard"], "Please select a valid card type"),
+    latitude: 0,
+    longitude: 0,
+    phoneNumber: "",
   });
 
   useEffect(() => {
     const fetchUserData = async () => {
+      setIsProfileLoading(true);
       try {
-        // 1️⃣ Get user ID from localStorage (saved at login)
-        const userId = localStorage.getItem("user_id");
-        if (!userId) {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData?.user) {
           toast.error("User not logged in");
           return;
         }
+        const userId = authData.user.id;
 
         // 2️⃣ Fetch data from Roofing_Auth table
         const { data, error } = await supabase
           .from("Roofing_Auth")
           .select(
-            `"Full Name", "Email Address", "Service Radius", "Business Address"`
+            `"Full Name", "Service Radius", "Business Address", "Email Address", "Phone Number"`
           )
           .eq("user_id", userId)
           .maybeSingle();
@@ -113,10 +62,13 @@ export const Setting = () => {
           email: data["Email Address"] || "",
           serviceRadius: data["Service Radius"] || "",
           businessAddress: data["Business Address"] || "",
+          phoneNumber: data["Phone Number"] || "",
         });
       } catch (err: any) {
         console.error("Error fetching user data:", err);
         toast.error("Failed to load user data");
+      } finally {
+        setIsProfileLoading(false);
       }
     };
 
@@ -127,75 +79,55 @@ export const Setting = () => {
     setIsEditing(true);
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     setIsEditing(false);
-  };
-
-  const handleUpdate = async () => {
-    setLoading(true);
     try {
-      const userId = localStorage.getItem("user_id");
-      if (!userId) {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData?.user) {
         toast.error("User not logged in");
         return;
       }
+      const userId = authData.user.id;
 
-      const { data: currentUser } = await supabase.auth.getUser();
-      const currentEmail = currentUser?.user?.email;
-      const newEmail = formData.email;
+      const { data, error } = await supabase
+        .from("Roofing_Auth")
+        .select(
+          `"Full Name", "Service Radius", "Business Address", "Phone Number"`
+        )
+        .eq("user_id", userId)
+        .maybeSingle();
 
-      if (currentEmail !== newEmail) {
-        const response = await fetch("/api/update-user-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: userId,
-            newEmail: newEmail,
-          }),
+      if (data) {
+        setFormData({
+          fullName: data["Full Name"] || "",
+          serviceRadius: data["Service Radius"] || "",
+          businessAddress: data["Business Address"] || "",
+          phoneNumber: data["Phone Number"],
         });
+      }
+    } catch (err) {
+      console.error("Error restoring data:", err);
+    }
+  };
 
-        const result = await response.json();
-
-        if (!response.ok) {
-          if (result.error?.includes("already registered") || result.error?.includes("duplicate")) {
-            toast.error("This email is already registered with another account");
-            return;
-          }
-          throw new Error(result.error || "Failed to update email");
-        }
-
-        const { error: dbError } = await supabase
-          .from("Roofing_Auth")
-          .update({
-            "Full Name": formData.fullName,
-            "Email Address": formData.email,
-            "Service Radius": formData.serviceRadius,
-            "Business Address": formData.businessAddress,
-          })
-          .eq("user_id", userId);
-
-        if (dbError) throw dbError;
-
-        toast.success("Email updated successfully! Please log in again with your new email.");
-        
-        await supabase.auth.signOut();
-        localStorage.removeItem("user_id");
-        localStorage.removeItem("loggedInUser");
-        localStorage.removeItem("userInfo");
-        
-        router.push("/login");
+  const handleUpdate = async () => {
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData?.user) {
+        toast.error("User not logged in");
         return;
       }
+      const userId = authData.user.id;
 
       const { error: dbError } = await supabase
         .from("Roofing_Auth")
         .update({
           "Full Name": formData.fullName,
-          "Email Address": formData.email,
           "Service Radius": formData.serviceRadius,
           "Business Address": formData.businessAddress,
+          "Latitude": formData.latitude,
+          "Longitude": formData.longitude,
+          "Phone Number": formData.phoneNumber,
         })
         .eq("user_id", userId);
 
@@ -206,8 +138,6 @@ export const Setting = () => {
     } catch (err: any) {
       console.error("Error updating profile:", err);
       toast.error(`Failed to update profile: ${err.message}`);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -216,6 +146,31 @@ export const Setting = () => {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const handleAddressSelect = async (prediction: PlacePrediction) => {
+    try {
+      // Set the address text in the form
+      setFormData((prev) => ({
+        ...prev,
+        businessAddress: prediction.description,
+      }));
+      
+      const response = await fetch(`/api/place-details?place_id=${prediction.place_id}`);
+      const data = await response.json();
+      if (data.lat && data.lng) {
+        setFormData((prev) => ({
+          ...prev,
+          latitude: data.lat,
+          longitude: data.lng,
+        }));
+        
+      } else {
+        console.warn("No coordinates found for selected address");
+      }
+    } catch (error) {
+      console.error("Error fetching address coordinates:", error);
+    }
   };
 
   const handleAddPaymentMethod = () => {
@@ -227,15 +182,14 @@ export const Setting = () => {
   };
 
   const handleFormSubmit = async (formData: Record<string, any>) => {
+    setIsPaymentLoading(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData?.user) {
         toast.error("User not logged in");
         return;
       }
+      const userId = authData.user.id;
 
       const cardNumber = formData.cardNumber.trim();
       const card_last4 = cardNumber.slice(-4);
@@ -243,7 +197,7 @@ export const Setting = () => {
 
       const { error } = await supabase.from("Payment_Method").insert([
         {
-          user_id: user.id,
+          user_id: userId,
           card_holder_name: formData.cardholderName,
           card_last4: card_last4,
           card_brand: formData.cardType,
@@ -253,20 +207,22 @@ export const Setting = () => {
 
       if (error) throw error;
 
-      toast.success("Payment method saved successfully");
-      await fetchCards();
       handleClosePaymentModal();
+      await fetchCards();
+      toast.success("Payment method saved successfully");
     } catch (err: any) {
       console.error("Error saving payment method:", err);
       toast.error("Failed to save payment method");
+    } finally {
+      setIsPaymentLoading(false);
     }
   };
 
   const fetchCards = async () => {
+    setIsPaymentLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId =
-        sessionData?.session?.user?.id || localStorage.getItem("user_id");
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const userId = authData?.user?.id;
 
       if (!userId) {
         toast.error("User not logged in");
@@ -286,6 +242,7 @@ export const Setting = () => {
       console.error("Error fetching cards:", err);
       toast.error("Failed to load cards");
     } finally {
+      setIsPaymentLoading(false);
     }
   };
 
@@ -300,8 +257,8 @@ export const Setting = () => {
         .delete()
         .eq("id", cardId);
       if (error) throw error;
-      toast.success("Payment method deleted successfully");
       await fetchCards();
+      toast.success("Payment method deleted successfully");
     } catch (err: any) {
       console.error("Delete error:", err);
       toast.error("Failed to delete payment method");
@@ -344,6 +301,7 @@ export const Setting = () => {
       name: "cardType",
       label: "Card Type",
       type: "select",
+      placeholder: "Select Card",
       required: true,
       options: [
         { value: "visa", label: "Visa" },
@@ -368,9 +326,9 @@ export const Setting = () => {
                 <User className="h-10 w-10 text-white" />
               </div>
               <h3 className="font-semibold text-gray-900 capitalize">
-                {currentUserFullName}
+                {formData.fullName}
               </h3>
-              <p className="text-sm text-gray-600">{user}</p>
+              <p className="text-sm text-gray-600">{formData.email}</p>
             </div>
             <div className="space-y-4">
               <div>
@@ -378,7 +336,7 @@ export const Setting = () => {
                   Full Name
                 </label>
                 <Input
-                  value={formData.fullName}
+                  value={isProfileLoading ? "Loading..." : formData.fullName}
                   onChange={(e) =>
                     handleInputChange("fullName", e.target.value)
                   }
@@ -390,11 +348,13 @@ export const Setting = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email Address
+                  Phone Number
                 </label>
                 <Input
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  value={isProfileLoading ? "Loading..." : formData.phoneNumber}
+                  onChange={(e) =>
+                    handleInputChange("phoneNumber", e.target.value)
+                  }
                   readOnly={!isEditing}
                   className={`text-gray-900 h-11 ${
                     !isEditing ? "bg-gray-50 cursor-not-allowed" : ""
@@ -407,7 +367,7 @@ export const Setting = () => {
                 </label>
                 <div className="relative">
                   <Input
-                    value={formData.serviceRadius}
+                    value={isProfileLoading ? "Loading..." : formData.serviceRadius}
                     onChange={(e) =>
                       handleInputChange("serviceRadius", e.target.value)
                     }
@@ -421,21 +381,30 @@ export const Setting = () => {
                   </span>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Business Address
-                </label>
-                <Input
-                  value={formData.businessAddress}
-                  onChange={(e) =>
-                    handleInputChange("businessAddress", e.target.value)
-                  }
-                  readOnly={!isEditing}
-                  className={`text-gray-900 h-11 ${
-                    !isEditing ? "bg-gray-50 cursor-not-allowed" : ""
-                  }`}
-                />
-              </div>
+              {/* <div>
+                {isEditing ? (
+                  <AddressSuggestion
+                    value={formData.businessAddress}
+                    onChange={(value) => handleInputChange("businessAddress", value)}
+                    onSelect={handleAddressSelect}
+                    placeholder="Start typing your business address..."
+                    label="Business Address"
+                    required={false}
+                    error=""
+                  />
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Business Address
+                    </label>
+                    <Input
+                      value={isProfileLoading ? "Loading..." : formData.businessAddress}
+                      readOnly
+                      className="text-gray-900 h-11 bg-gray-50 cursor-not-allowed"
+                    />
+                  </div>
+                )}
+              </div> */}
             </div>
             {!isEditing ? (
               <Button
@@ -457,18 +426,18 @@ export const Setting = () => {
                 </Button>
                 <Button
                   onClick={handleUpdate}
-                  className={`flex-1 h-11 bg-[#122E5F] hover:bg-[#0f2347] font-semibold ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                  disabled={loading}
+                  className={`flex-1 h-11 bg-[#122E5F] hover:bg-[#0f2347] font-semibold ${isProfileLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  disabled={isProfileLoading}
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {loading ? "Updating..." : "Update Profile"}
+                  {isProfileLoading ? "Updating..." : "Update Profile"}
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg w-full md:w-1/2">
+        {/* <Card className="border-0 shadow-lg w-full md:w-1/2">
           <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50">
             <CardTitle className="flex items-center text-[#286BBD] text-xl">
               <CreditCard className="h-5 w-5 mr-2" />
@@ -477,84 +446,93 @@ export const Setting = () => {
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
-              {cards.length > 0 ? (
-                <div className="space-y-4">
-                  {cards.map((card) => (
-                    <div
-                      key={card.id}
-                      className="p-4 border border-gray-200 rounded-lg hover:border-[#286BBD] hover:shadow-md transition-all"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center">
-                            <CreditCard className="h-5 w-5 text-[#286BBD]" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                                <p className="font-medium text-gray-900">
-                                  •••• {card.card_last4}
-                                </p>
-                              <Badge
-                                variant="outline"
-                                className="text-xs font-normal capitalize"
-                              >
-                                {card.card_brand}
-                              </Badge>
-                            </div>
-                            <p className="font-medium text-gray-500">
-                              {card.card_holder_name}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Expires {card.expiry_date}
-                            </p>
-                          </div>
-                        </div>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500 border border-red-500  hover:text-white hover:bg-red-500"
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="text-[#286BBD]">
-                                Delete Payment Method
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete this payment
-                                method? This action cannot be undone and you
-                                will lose access to the system.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="text-[#286BBD]">
-                                Cancel
-                              </AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  handlePaymentMethodDelete(card.id)
-                                }
-                                className="bg-red-500 hover:bg-red-600"
-                              >
-                                Yes, Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  ))}
+              {isPaymentLoading ? (
+                <div className="flex flex-col items-center justify-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Loading payment methods...
+                    </p>
+                  </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500">
-                  <CreditCard className="h-12 w-12 mb-3 text-gray-300" />
-                  <p>No payment methods added yet</p>
-                  <p className="text-sm">Add a card to get started</p>
-                </div>
+                <div className="space-y-4 h-52 overflow-y-auto">
+                    {cards.length > 0 ? (
+                      cards.map((card) => (
+                        <div
+                          key={card.id}
+                          className="p-4 border border-gray-200 rounded-lg hover:border-[#286BBD] hover:shadow-md transition-all"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center">
+                                <CreditCard className="h-5 w-5 text-[#286BBD]" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                    <p className="font-medium text-gray-900">
+                                      •••• {card.card_last4}
+                                    </p>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs font-normal capitalize"
+                                  >
+                                    {card.card_brand}
+                                  </Badge>
+                                </div>
+                                <p className="font-medium text-gray-500">
+                                  {card.card_holder_name}
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                  Expires {card.expiry_date}
+                                </p>
+                              </div>
+                            </div>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 border border-red-500  hover:text-white hover:bg-red-500"
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-[#286BBD]">
+                                    Delete Payment Method
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this payment method?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="text-[#286BBD]">
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() =>
+                                      handlePaymentMethodDelete(card.id)
+                                    }
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    Yes, Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500">
+                        <CreditCard className="h-12 w-12 mb-3 text-gray-300" />
+                        <p>No payment methods added yet</p>
+                        <p className="text-sm">Add a card to get started</p>
+                      </div>
+                    )}
+                  </div>
               )}
               <Button
                 variant="outline"
@@ -576,7 +554,7 @@ export const Setting = () => {
               </p>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Add Payment Method Modal */}
@@ -586,7 +564,7 @@ export const Setting = () => {
         title="Add Payment Method"
         subtitle="Enter your payment details securely"
         titleIcon={CreditCard}
-        submitButtonText="Save Payment Method"
+        submitButtonText={isPaymentLoading ? "Saving..." : "Save Payment Method"}
         submitButtonIcon={Save}
         onSubmit={handleFormSubmit}
         validationSchema={paymentMethodSchema}

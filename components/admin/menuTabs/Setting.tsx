@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { settingType } from "@/types/AdminTypes";
 import { toast } from "react-toastify";
 import { supabase } from "@/lib/supabase";
+import { AddressSuggestion } from "@/components/ui/AddressSuggestion";
+import { PlacePrediction } from "@/types/AuthType";
 
 export const Setting = () => {
 
@@ -17,7 +19,9 @@ export const Setting = () => {
     fullName: "",
     email: "",
     businessAddress: "",
-    leads: ""
+    leads: "",
+    latitude: 0,
+    longitude: 0,
   });
 
   useEffect(() => {
@@ -26,7 +30,7 @@ export const Setting = () => {
 
         const { data, error } = await supabase
           .from("Admin_Data")
-          .select(`"Full Name", "Email Address", "Business Address", "Price Per Lead"`)
+          .select(`"Full Name", "Business Address", "Price Per Lead", "Email Address"`)
           .maybeSingle();
 
         if (error) throw error;
@@ -54,78 +58,75 @@ export const Setting = () => {
     setIsEditing(true);
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     setIsEditing(false);
+    // Restore original data from Supabase
+    try {
+      const { data, error } = await supabase
+        .from("Admin_Data")
+        .select(`"Full Name", "Business Address", "Price Per Lead"`)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setFormData({
+          fullName: data["Full Name"] || "",
+          businessAddress: data["Business Address"] || "",
+          leads: data["Price Per Lead"]?.toString() || "",
+        });
+      }
+    } catch (err) {
+      console.error("Error restoring data:", err);
+      toast.error("Failed to restore data");
+    }
+  };
+
+  const handleAddressSelect = async (prediction: PlacePrediction) => {
+    try {
+      // Set the address text in the form
+      setFormData((prev) => ({
+        ...prev,
+        businessAddress: prediction.description,
+      }));
+      
+      const response = await fetch(`/api/place-details?place_id=${prediction.place_id}`);
+      const data = await response.json();
+      if (data.lat && data.lng) {
+        console.log("Selected Address Coordinates:", data.lat, data.lng);
+        setFormData((prev) => ({
+          ...prev,
+          latitude: data.lat,
+          longitude: data.lng,
+        }));
+        
+      } else {
+        console.warn("No coordinates found for selected address");
+      }
+    } catch (error) {
+      console.error("Error fetching address coordinates:", error);
+    }
   };
 
   const handleUpdate = async () => {
     setLoading(true);
     try {
-      const oldEmail = localStorage.getItem("adminLoggedInUser");
-      const adminId = localStorage.getItem("admin_id");
-      
-      if (!oldEmail || !adminId) {
-        toast.error("Admin not logged in.");
-        return;
-      }
-
-      const newEmail = formData.email;
-
-      if (oldEmail !== newEmail) {
-        const response = await fetch("/api/update-admin-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: adminId,
-            oldEmail: oldEmail,
-            newEmail: newEmail,
-            fullName: formData.fullName,
-            businessAddress: formData.businessAddress,
-            pricePerLead: parseFloat(formData.leads) || null,
-          }),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          if (result.error?.includes("already registered") || result.error?.includes("duplicate")) {
-            toast.error("This email is already registered with another account");
-            return;
-          }
-          throw new Error(result.error || "Failed to update email");
-        }
-
-        toast.success("Email updated successfully! Please log in again with your new email.");
-        
-        await supabase.auth.signOut();
-        localStorage.removeItem("adminLoggedInUser");
-        localStorage.removeItem("admin_id");
-        
-        window.location.href = "/adminLogin";
-        return;
-      }
-
-      console.log("🟢 Updating Admin_Data for:", oldEmail, "→", formData.email);
-
       const { error: updateError } = await supabase
         .from("Admin_Data")
         .update({
           "Full Name": formData.fullName,
-          "Email Address": formData.email,
           "Business Address": formData.businessAddress,
           "Price Per Lead": parseFloat(formData.leads) || null,
+          "Latitude": formData.latitude,
+          "Longitude": formData.longitude,
         })
-        .eq("Email Address", oldEmail);
+        .eq("Email Address", formData.email);
 
       if (updateError) {
         console.error("❌ Supabase Admin_Data update error:", updateError);
         toast.error("Error updating Admin_Data table");
         return;
       }
-
-      localStorage.setItem("adminLoggedInUser", formData.email);
 
       toast.success("Admin profile updated successfully!");
       setIsEditing(false);
@@ -136,10 +137,6 @@ export const Setting = () => {
       setLoading(false);
     }
   };
-  
-  
-  
-  
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -180,28 +177,33 @@ export const Setting = () => {
                   className={`text-gray-900 h-11 ${!isEditing ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <Input
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  readOnly={!isEditing}
-                  className={`text-gray-900 h-11 ${!isEditing ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Business Address
-                </label>
-                <Input
-                  value={formData.businessAddress}
-                  onChange={(e) => handleInputChange('businessAddress', e.target.value)}
-                  readOnly={!isEditing}
-                  className={`text-gray-900 h-11 ${!isEditing ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                />
-              </div>
+              {/* <div>
+                {isEditing ? (
+                  <AddressSuggestion
+                    value={formData.businessAddress}
+                    onChange={(value) => handleInputChange("businessAddress", value)}
+                    // onSelect={(prediction: PlacePrediction) => {
+                    //   handleInputChange("businessAddress", prediction.description);
+                    // }}
+                    onSelect={handleAddressSelect}
+                    placeholder="Start typing your business address..."
+                    label="Business Address"
+                    required={false}
+                    error=""
+                  />
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Business Address
+                    </label>
+                    <Input
+                      value={formData.businessAddress}
+                      readOnly
+                      className="text-gray-900 h-11 bg-gray-50 cursor-not-allowed"
+                    />
+                  </div>
+                )}
+              </div> */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Price Per Lead

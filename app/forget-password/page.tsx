@@ -53,7 +53,7 @@ export default function ForgetPasswordPage() {
       }
 
       toast.success("Password reset email sent! Check your inbox.");
-      // router.push("/login");
+      router.push("/login");
     } catch (err: any) {
       console.error("Password reset error:", err);
       
@@ -116,14 +116,14 @@ export default function ForgetPasswordPage() {
 
             {/* Buttons */}
             <div className="flex space-x-3">
-              {/* <button
+              <button
                 type="button"
                 onClick={() => router.push("/login")}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Login
-              </button> */}
+              </button>
               <button
                 type="submit"
                 disabled={isSubmitting}

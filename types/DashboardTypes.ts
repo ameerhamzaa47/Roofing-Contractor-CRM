@@ -9,48 +9,51 @@ export interface CrmDashboardProps {
 }
 
 export interface crmDataType {
-  name: string;
-  phoneno: string;
-  email: string;
-  location: string;
-  insuranceCompany: string;
-  policy: string;
-}
-
-export interface purchasedLeadType {
   "First Name": string;
   "Last Name": string;
   "Phone Number": string;
   "Email Address": string;
-  "Zip Code": string;
+  "Property Address": string;
+  "Insurance Company": string;
+  "Policy Number": string;
+  "status": string;
+}
+
+export interface purchasedLeadType {
+  id: string;
+  "First Name": string;
+  "Last Name": string;
+  "Phone Number": string;
+  "Email Address": string;
+  "Property Address": string;
   "Insurance Company": string;
   "Policy Number": string;
   "Purchase Date": string;
+  "status": string;
 }
 
-export interface sampleLeadType {
+export interface premiumLeadType {
   id: number;
-  firstName: string;
-  lastName: string;
-  zipCode: string;
-  phone: string;
-  email: string;
-  price: number;
+  "First Name": string;
+  "Last Name": string;
+  "Property Address": string;
+  "Phone Number": string;
+  "Email Address": string;
+  "Price": number;
 }
 
 export interface purchaseFormType {
-  zipCode: string;
   quantity: string;
 }
 
 export interface leadsInfoType {
   id: string;
-  zipCode: string;
-  date: string;
-  price: number;
-  noOfLeads: number;
-  receivedLeads: number;
-  pendingLeads: number;
+  "Business Address": string;
+  "Purchase Date": string;
+  "Price": number;
+  "No. of Leads": number;
+  "Send Leads": number;
+  "Pending Leads": number;
 }
 
 export interface teamMemberType {
@@ -61,9 +64,12 @@ export interface teamMemberType {
 
 export interface settingType {
   fullName: string;
-  email: string;
+  email?: string;
   serviceRadius: string;
   businessAddress: string;
+  latitude?: number;
+  longitude?: number;
+  phoneNumber: string;
 }
 
 export interface  paymentMethodType {

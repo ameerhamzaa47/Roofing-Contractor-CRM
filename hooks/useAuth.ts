@@ -47,9 +47,12 @@ export const useAuth = () => {
   const logout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem("loggedInUser");
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("userInfo");
+      localStorage.removeItem("sb-luonhxqzqsgspxjgzozh-auth-token");
     }
     setUser(null);
-    router.push("/");
+    router.push("/login");
   };
 
   const logoutAdmin = () => {

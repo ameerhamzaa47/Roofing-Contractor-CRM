@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormField } from "@/types/Types";
 import { Pagination } from "@/components/ui/pagination";
-import { Search, Target, Plus, Download, Eye, ChevronDown, X, UserPlus, Check, FileText, MoreHorizontal, MapPin, Phone, Mail, User, Building, Hash } from "lucide-react";
+import { Search, Target, Plus, Download, Eye, ChevronDown, X, Check, FileText, MoreHorizontal, MapPin, Phone, Mail, User, Building, Hash, } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormPopup } from "@/components/ui/FormPopup";
@@ -16,8 +15,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { fetchContractors, fetchLeads } from "./Data";
 import { LeadType, ContractorType } from "@/types/AdminTypes";
 import { toast } from "react-toastify";
-import * as ExcelJS from "exceljs";
-import * as yup from "yup";
+import { exportToExcel } from "./exportExcel";
+import { newLeadSchema } from "@/validations/admin/schema";
+import { addLeadFields } from "./formFeilds";
+import { calculateDistance } from "@/lib/distanceFormula";
 
 export const Leads = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,53 +37,13 @@ export const Leads = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [assignedContractor, setAssignedContractor] = useState<any>(null);
   const [loadingAssignedContractor, setLoadingAssignedContractor] = useState(false);
-  // Validation schema for new lead form
-  const newLeadSchema = yup.object().shape({
-    firstName: yup
-      .string()
-      .required("First name is required")
-      .min(2, "First name must be at least 2 characters")
-      .max(50, "First name must be less than 50 characters"),
-    lastName: yup
-      .string()
-      .required("Last name is required")
-      .min(2, "Last name must be at least 2 characters")
-      .max(50, "Last name must be less than 50 characters"),
-    phoneno: yup
-      .string()
-      .required("Phone number is required")
-      .matches(
-        /^\(\d{3}\) \d{3}-\d{4}$/,
-        "Please enter a valid phone number in format (555) 123-4567" ),
-    email: yup
-      .string()
-      .required("Email is required")
-      .email("Please enter a valid email address"),
-    zipCode: yup
-      .string()
-      .required("Address is required")
-      .min(5, "Please enter a valid address"),
-    company: yup
-      .string()
-      .required("Insurance company is required")
-      .min(2, "Company name must be at least 2 characters")
-      .max(100, "Company name must be less than 100 characters"),
-    policy: yup
-      .string()
-      .required("Policy number is required")
-      .min(2, "Policy number must be at least 2 characters")
-      .max(50, "Policy number must be less than 50 characters"),
-  });
-
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Filter leads based on search term and status
   const filteredLeads = leads.filter((lead) => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
-      (lead["Property ZIP Code"]?.toLowerCase() || "").includes(searchLower) ||
+      (lead["Property Address"]?.toLowerCase() || "").includes(searchLower) ||
       (lead["First Name"]?.toLowerCase() || "").includes(searchLower) ||
       (lead["Last Name"]?.toLowerCase() || "").includes(searchLower) ||
       (lead["Phone Number"] || "").includes(searchTerm) ||
@@ -97,7 +58,6 @@ export const Leads = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Filter leads for Open tab (shows leads with "Open" and "Cancel" status)
   const openLeads = filteredLeads.filter((lead) => {
     return (
       lead["Status"].toLowerCase() === "open" ||
@@ -105,15 +65,12 @@ export const Leads = () => {
     );
   });
 
-  // Filter leads for Close tab (shows leads with "Close" status)
   const closeLeads = filteredLeads.filter((lead) => {
     return lead["Status"].toLowerCase() === "close";
   });
 
-  // Get current tab data
   const currentTabData = activeTab === "open" ? openLeads : closeLeads;
 
-  // Pagination logic
   const totalPages = Math.ceil(currentTabData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -133,10 +90,9 @@ export const Leads = () => {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    setCurrentPage(1); // Reset to first page when switching tabs
+    setCurrentPage(1);
   };
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
@@ -160,17 +116,20 @@ export const Leads = () => {
     setLoadingLeads(false);
   };
 
-  const fetchAssignedContractor = async (leadEmail: string) => {
+  useEffect(() => {
+    fetchLeadsData();
+  }, []);
+
+  const fetchAssignedContractor = async (leadId: number) => {
     setLoadingAssignedContractor(true);
     try {
-      console.log("Fetching contractor for lead email:", leadEmail);
+      console.log("Fetching contractor for lead email:", leadId);
 
-      // First, get the contractor_id from Contractor_Leads table
       const { data: contractorLead, error: contractorLeadError } =
         await supabase
           .from("Contractor_Leads")
           .select("contractor_id")
-          .eq("Email Address", leadEmail)
+          .eq("lead_id", leadId)
           .single();
 
       if (contractorLeadError && contractorLeadError.code !== "PGRST116") {
@@ -182,7 +141,6 @@ export const Leads = () => {
         return;
       }
 
-      // Then, get the contractor details from Roofing_Auth table
       const { data: contractorData, error: contractorError } = await supabase
         .from("Roofing_Auth")
         .select(
@@ -204,16 +162,10 @@ export const Leads = () => {
     }
   };
 
-  useEffect(() => {
-    fetchLeadsData();
-  }, []);
-
   const handleViewLead = (lead: LeadType): void => {
     setSelectedLead(lead);
     setShowModal(true);
-    if (lead["Email Address"]) {
-      fetchAssignedContractor(lead["Email Address"]);
-    }
+    fetchAssignedContractor(lead.id);
   };
 
   const handleCloseModal = () => {
@@ -258,13 +210,17 @@ export const Leads = () => {
       const { error } = await supabase.from("Contractor_Leads").insert([
         {
           contractor_id: selectedContractor,
+          lead_id: leadToAssign.id,
           "First Name": leadToAssign["First Name"],
           "Last Name": leadToAssign["Last Name"],
           "Phone Number": leadToAssign["Phone Number"],
-          "Email Address": leadToAssign["Email Address"],
-          "Zip Code": leadToAssign["Property ZIP Code"],
+          "Email Address": leadToAssign["Email Address"],  
+          "Property Address": leadToAssign["Property Address"],
           "Insurance Company": leadToAssign["Insurance Company"],
           "Policy Number": leadToAssign["Policy Number"],
+          "Latitude": leadToAssign["Latitude"],
+          "Longitude": leadToAssign["Longitude"],
+          status: "open",
         },
       ]);
 
@@ -324,72 +280,79 @@ export const Leads = () => {
     setContractorSearchTerm(e.target.value);
   };
 
+  const getDistanceBadge = (contractor: ContractorType, lead: LeadType) => {
+    if (!contractor || !lead) {
+      return { text: "Loading...", color: "bg-gray-100 text-gray-800" };
+    }
+
+    if (!lead["Latitude"] || !lead["Longitude"] || !contractor.latitude || !contractor.longitude) {
+      return { text: "No Coordinates", color: "bg-gray-100 text-gray-800" };
+    }
+
+    const serviceRadius = contractor.serviceRadius || "50 miles";
+    const radiusValue = parseFloat(serviceRadius.replace(/\D/g, '')) || 50;
+    
+    const distance = calculateDistance(
+      contractor.latitude,
+      contractor.longitude,
+      lead["Latitude"],
+      lead["Longitude"]
+    );
+    
+    const diff = distance - radiusValue;
+    console.log('diff', diff);
+    console.log('distance', distance);
+    console.log('radiusValue', radiusValue);
+
+    let badge = { text: "Too Far", color: "bg-red-100 text-red-800" };
+
+    if (diff <= 5) badge = { text: "Nearest", color: "bg-green-100 text-green-800" };
+    else if (diff <= 10) badge = { text: "Near", color: "bg-yellow-100 text-yellow-800" };
+    else if (diff <= 20) badge = { text: "Far", color: "bg-blue-100 text-blue-800" };
+
+    return {
+      text: badge.text,
+      color: badge.color,
+      distance: distance.toFixed(1),
+      radius: radiusValue.toFixed(1),
+    };
+  };
+
   const filteredContractors = contractors.filter(
-    (contractor) =>
-      contractor.fullName
-        .toLowerCase()
-        .includes(contractorSearchTerm.toLowerCase()) ||
-      contractor.phoneno
-        .toLowerCase()
-        .includes(contractorSearchTerm.toLowerCase()) ||
-      contractor.businessAddress
-        .toLowerCase()
-        .includes(contractorSearchTerm.toLowerCase())
+    (contractor) => {
+      const searchLower = contractorSearchTerm.toLowerCase();
+      const matchesBasic = 
+        contractor.fullName
+          .toLowerCase()
+          .includes(searchLower) ||
+        contractor.phoneno
+          .toLowerCase()
+          .includes(searchLower) ||
+        contractor.businessAddress
+          .toLowerCase()
+          .includes(searchLower);
+
+      if (matchesBasic) return true;
+
+      if (leadToAssign) {
+        const badge = getDistanceBadge(contractor, leadToAssign);
+        if (badge) {
+          const badgeText = badge.text?.toLowerCase() || "";
+          const badgeDistance = badge.distance?.toString() || "";
+          const badgeRadius = badge.radius?.toString() || "";
+          const badgeSearchable = `${badgeText} ${badgeDistance} ${badgeRadius}`.toLowerCase();
+          
+          if (badgeSearchable.includes(searchLower)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
   );
 
-  const handleExportToExcel = async () => {
-    try {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Leads");
-
-      // Add headers
-      worksheet.columns = [
-        { header: "First Name", key: "firstName", width: 15 },
-        { header: "Last Name", key: "lastName", width: 15 },
-        { header: "Phone Number", key: "phoneno", width: 15 },
-        { header: "Email", key: "email", width: 25 },
-        { header: "Zip Code", key: "zipCode", width: 10 },
-        { header: "Insurance Company", key: "company", width: 20 },
-        { header: "Policy Number", key: "policy", width: 15 },
-        { header: "Assigned To", key: "assignedTo", width: 20 },
-      ];
-
-      // Add data rows
-      filteredLeads.forEach((lead) => {
-        worksheet.addRow({
-          firstName: lead["First Name"],
-          lastName: lead["Last Name"],
-          phoneno: lead["Phone Number"],
-          email: lead["Email Address"],
-          zipCode: lead["Property ZIP Code"],
-          company: lead["Insurance Company"],
-          policy: lead["Policy Number"],
-          assignedTo: lead["Assigned To"] || "Unassigned",
-        });
-      });
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split("T")[0];
-      const filename = `leads_export_${currentDate}.xlsx`;
-
-      // Download the file
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      link.click();
-      window.URL.revokeObjectURL(url);
-
-      console.log(`Excel file "${filename}" downloaded successfully!`);
-    } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      alert("Error exporting data to Excel. Please try again.");
-    }
-  };
+  
 
   const handleFormSubmit = async (formData: Record<string, any>) => {
     setIsSubmitting(true);
@@ -397,7 +360,7 @@ export const Leads = () => {
       // 1️⃣ Insert data into Leads_Data table
       const { error } = await supabase.from("Leads_Data").insert([
         {
-          "Property ZIP Code": formData.zipCode,
+          "Property Address": formData.propertyAddress,
           "First Name": formData.firstName,
           "Last Name": formData.lastName,
           "Phone Number": formData.phoneno,
@@ -405,6 +368,8 @@ export const Leads = () => {
           "Insurance Company": formData.company,
           "Policy Number": formData.policy,
           Status: "open",
+          "Latitude": formData.latitude,
+          "Longitude": formData.longitude,
         },
       ]);
 
@@ -420,59 +385,6 @@ export const Leads = () => {
       setIsSubmitting(false);
     }
   };
-
-  const addLeadFields = [
-    {
-      name: "firstName",
-      label: "First Name",
-      type: "text",
-      placeholder: "John",
-      required: true,
-    },
-    {
-      name: "lastName",
-      label: "Last Name",
-      type: "text",
-      placeholder: "Doe",
-      required: true,
-    },
-    {
-      name: "phoneno",
-      label: "Phone Number",
-      type: "tel",
-      placeholder: "(555) 123-4567",
-      required: true,
-    },
-    {
-      name: "email",
-      label: "Email Address",
-      type: "email",
-      placeholder: "john@example.com",
-      required: true,
-    },
-    {
-      name: "zipCode",
-      label: "Zip Code",
-      type: "text",
-      placeholder: "75201",
-      required: true,
-      maxLength: 5,
-    },
-    {
-      name: "company",
-      label: "Insurance Company",
-      type: "text",
-      placeholder: "ABC Insurance",
-      required: true,
-    },
-    {
-      name: "policy",
-      label: "Policy Number",
-      type: "text",
-      placeholder: "POL123456789",
-      required: true,
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -495,7 +407,7 @@ export const Leads = () => {
           <Button
             variant="outline"
             className="border-[#286BBD] text-[#286BBD] hover:bg-[#286BBD] hover:text-white"
-            onClick={handleExportToExcel}
+            onClick={() => exportToExcel(filteredLeads)}
           >
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -543,22 +455,21 @@ export const Leads = () => {
             onValueChange={handleTabChange}
             className="w-full"
           >
-            <div className="border-b border-gray-200">
-              <TabsList className="grid w-full grid-cols-2 bg-transparent h-auto p-0">
+            {/* <div className="border-b border-gray-200"> */}
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger
                   value="open"
-                  className="flex-1 py-4 px-6 text-sm font-medium border-b-2 border-transparent data-[state=active]:border-[#286BBD] data-[state=active]:text-[#286BBD] data-[state=active]:bg-transparent rounded-none"
+                  className="text-sm font-medium"
                 >
                   Open Leads ({openLeads.length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="close"
-                  className="flex-1 py-4 px-6 text-sm font-medium border-b-2 border-transparent data-[state=active]:border-[#286BBD] data-[state=active]:text-[#286BBD] data-[state=active]:bg-transparent rounded-none"
+                  className="text-sm font-medium"
                 >
                   Close Leads ({closeLeads.length})
                 </TabsTrigger>
               </TabsList>
-            </div>
 
             <TabsContent value="open" className="m-0">
               <div className="overflow-x-auto">
@@ -569,10 +480,10 @@ export const Leads = () => {
                         Name
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Zip Code
+                        Contect Info
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Contect Info
+                        Property Address
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
@@ -588,7 +499,9 @@ export const Leads = () => {
                         <td colSpan={6} className="px-6 py-8 text-center">
                           <div className="flex flex-col items-center justify-center">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
-                            <p className="mt-2 text-sm text-gray-500">Loading leads...</p>
+                            <p className="mt-2 text-sm text-gray-500">
+                              Loading leads...
+                            </p>
                           </div>
                         </td>
                       </tr>
@@ -601,25 +514,19 @@ export const Leads = () => {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                              <span className="text-sm font-medium text-gray-900">
-                                {lead["Property ZIP Code"]}
-                              </span>
+                            <div className="flex items-center text-sm font-medium text-gray-600">
+                              <Phone className="h-3 w-3 mr-1 text-gray-400" />
+                              {lead["Phone Number"]}
+                            </div>
+                            <div className="flex items-center text-sm font-medium text-gray-600">
+                              <Mail className="h-3 w-3 mr-1 text-gray-400" />
+                              {lead["Email Address"]}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                              <span className="text-sm font-medium text-gray-900">
-                                {lead["Phone Number"]}
-                              </span>
-                            </div>
-                            <div className="flex items-center">
-                              <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                              <span className="text-sm font-medium text-gray-900">
-                                {lead["Email Address"]}
-                              </span>
+                            <div className="flex items-center w-52 text-sm font-medium text-gray-600">
+                              <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+                              <span className="truncate">{lead["Property Address"]}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -706,10 +613,10 @@ export const Leads = () => {
                         Name
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Zip Code
+                        Contect Info
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Contect Info
+                        Property Address
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
@@ -730,14 +637,6 @@ export const Leads = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                              <span className="text-sm font-medium text-gray-900">
-                                {lead["Property ZIP Code"]}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
                               <Phone className="h-4 w-4 text-gray-400 mr-2" />
                               <span className="text-sm font-medium text-gray-900">
                                 {lead["Phone Number"]}
@@ -750,6 +649,14 @@ export const Leads = () => {
                               </span>
                             </div>
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center w-52">
+                              <MapPin className="h-4 w-4 text-gray-400 mr-2" />
+                              <span className="text-sm font-medium text-gray-900 truncate">
+                                {lead["Property Address"]}
+                              </span>
+                            </div>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowra text-sm font-medium">
                             <Badge
                               className={getStatusBadgeColor(lead["Status"])}
@@ -758,35 +665,15 @@ export const Leads = () => {
                             </Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center gap-2">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => handleViewLead(lead)}
-                                  className="cursor-pointer"
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            {/* <Button
+                            <Button
                               size="sm"
                               variant="outline"
-                              className="border-[#286BBD] text-[#286BBD] hover:bg-[#286BBD] hover:text-white"
-                              onClick={() => handleAssignLead(lead)}
+                              className="border-[#122E5F] text-[#122E5F] hover:bg-[#122E5F] hover:text-white"
+                              onClick={() => handleViewLead(lead)}
                             >
-                              <Target className="h-4 w-4 mr-1" />
-                              Assign
-                            </Button> */}
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
                           </td>
                         </tr>
                       ))
@@ -897,11 +784,11 @@ export const Leads = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Property ZIP Code
+                    Property Address
                   </label>
                   <p className="text-gray-900 break-all bg-gray-50 p-1.5 rounded-md text-sm flex items-center">
                     <MapPin className="h-3 w-3 mr-1 text-gray-400" />
-                    {selectedLead["Property ZIP Code"]}
+                    {selectedLead["Property Address"]}
                   </p>
                 </div>
                 <div>
@@ -925,42 +812,44 @@ export const Leads = () => {
               </div>
 
               {/* Assigned Contractor Section */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <User className="h-5 w-5 mr-2 text-[#286BBD]" />
-                    Assigned Contractor
-                  </h3>
-                  <div className="overflow-auto max-h-64">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <User className="h-5 w-5 mr-2 text-[#286BBD]" />
+                  Assigned Contractor
+                </h3>
+                <div className="overflow-auto max-h-64">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Phone no
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Business Address
+                        </th>
+                      </tr>
+                    </thead>
+                    {loadingAssignedContractor ? (
+                      <tbody className="bg-white divide-y divide-gray-200">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Email
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Phone no
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Business Address
-                          </th>
+                          <td colSpan={4} className="px-6 py-8 text-center">
+                            <div className="flex flex-col items-center justify-center">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
+                              <p className="mt-2 text-sm text-gray-500">
+                                Loading assigned contractor...
+                              </p>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      {loadingAssignedContractor ? (
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          <tr>
-                            <td colSpan={4} className="px-6 py-8 text-center">
-                              <div className="flex flex-col items-center justify-center">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
-                                <p className="mt-2 text-sm text-gray-500">Loading assigned contractor...</p>
-                              </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      ) : assignedContractor ? (
-                        <tbody className="bg-white divide-y divide-gray-200">
+                      </tbody>
+                    ) : assignedContractor ? (
+                      <tbody className="bg-white divide-y divide-gray-200">
                         <tr>
                           <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             {assignedContractor["Full Name"]}
@@ -976,19 +865,21 @@ export const Leads = () => {
                           </td>
                         </tr>
                       </tbody>
-                      ) : (
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          <tr>
-                            <td colSpan={4} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              No assigned contractor found
-                            </td>
-                          </tr>
-                        </tbody>
-                      )}
-                    </table>
-                  </div>
+                    ) : (
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            No assigned contractor found
+                          </td>
+                        </tr>
+                      </tbody>
+                    )}
+                  </table>
                 </div>
-              
+              </div>
 
               {/* Action Buttons */}
               <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
@@ -1015,13 +906,13 @@ export const Leads = () => {
         submitButtonText={isSubmitting ? "Submitting..." : "Add Lead"}
         submitButtonIcon={Plus}
         onSubmit={handleFormSubmit}
-        validationSchema={newLeadSchema as yup.ObjectSchema<any>}
+        validationSchema={newLeadSchema}
         fields={addLeadFields as FormField[]}
       />
 
       {/* Assign Lead Modal */}
       {showAssignModal && leadToAssign && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 -top-8 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl h-[80vh] md:h-auto w-full mx-4 relative animate-in zoom-in-95 duration-300 overflow-auto">
             {/* Close Button */}
             <button
@@ -1069,11 +960,12 @@ export const Leads = () => {
               <div className="max-h-64 overflow-y-auto">
                 <div className="space-y-3">
                   {filteredContractors.length > 0 ? (
-                    filteredContractors.map((contractor) => (
+                    filteredContractors.map((contractor) => {
+                      const badge = getDistanceBadge(contractor, leadToAssign);
+                      return (
                       <div
                         key={contractor.user_id}
-                        className="flex flex-col md:flex-row justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 hover:border-[#286BBD]/50"
-                      >
+                        className="flex flex-col md:flex-row justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 hover:border-[#286BBD]/50">
                         <div className="flex items-center space-x-4">
                           <Checkbox
                             checked={selectedContractor === contractor.user_id}
@@ -1083,39 +975,37 @@ export const Leads = () => {
                             className="data-[state=checked]:bg-[#286BBD] data-[state=checked]:border-[#286BBD]"
                           />
                           <div className="flex items-center space-x-2">
-                            <div className="w-10 h-10 bg-[#286BBD]/10 rounded-full flex items-center justify-center">
-                              <UserPlus className="h-5 w-5 text-[#286BBD]" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900">
-                                {contractor.fullName}
-                              </h3>
-                              <p className="text-sm text-gray-600">
+
+                            <div className="w-10 h-10 bg-[#286BBD]/10 rounded-full hidden md:flex items-center justify-center">
+                                <span className="text-sm font-semibold text-[#286BBD]">
+                                  {contractor.fullName.charAt(0).toUpperCase()}
+                                  {contractor.fullName.charAt(1).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                  {contractor.fullName}
+                                  {badge && (
+                                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>
+                                          {badge.text} • {badge.distance} mi (radius {badge.radius} mi)
+                                      </span>
+                                  )}
+                                </h4>
+                                <p className="text-sm text-gray-600">
+                                  {contractor.businessAddress}
+                                </p>
+                              </div>
+                          </div>
+                        </div>
+                          <div className="flex items-center mt-2 gap-2">
+                              <Phone className="h-4 w-4 text-gray-400" />
+                              <p className="text-sm font-medium text-green-600">
                                 {contractor.phoneno}
                               </p>
                             </div>
-                          </div>
-                        </div>
-                        <div className="">
-                          <div className="flex justify-between space-x-4 mt-4 md:mt-0">
-                            <div className="text-start md:text-end">
-                              <p className="text-sm font-medium text-[#286BBD]">
-                                {contractor.businessAddress}
-                              </p>
-                              <p className="text-xs text-gray-500">Location</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-green-600">
-                                {contractor.serviceRadius}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Service Radius
-                              </p>
-                            </div>
-                          </div>
-                        </div>
                       </div>
-                    ))
+                    );
+                    })
                   ) : (
                     <div className="text-center py-8">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

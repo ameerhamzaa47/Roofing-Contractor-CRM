@@ -2,10 +2,72 @@
 
 import { useRouter } from "next/navigation";
 import { CheckCircle, ArrowRight } from "lucide-react";
+import { useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { autoAssignLeads } from "@/lib/autoAssignLeads";
+import { supabase } from "@/lib/supabase";
 
-export default function SuccessPage() {
+function SuccessContent() {
   const router = useRouter();
 
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState("checking");
+
+  useEffect(() => {
+    const verifyAndAssign = async () => {
+      const sessionId = searchParams.get("session_id");
+      if (!sessionId) {
+        setStatus("invalid");
+        return;
+      }
+
+      // ✅ Check if this session has already been processed
+      const { data: existing, error: checkError } = await supabase
+        .from("Processed_Sessions")
+        .select("id")
+        .eq("session_id", sessionId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Error checking session:", checkError);
+        return;
+      }
+
+      if (existing) {
+        console.error("⚠️ Session already processed — skipping lead assignment");
+        setStatus("already-processed");
+        return;
+      }
+
+      // ✅ Verify Stripe session
+      const res = await fetch(`/api/verify-session?session_id=${sessionId}`);
+      const { paid, quantity } = await res.json();
+
+      if (paid) {
+        console.log("✅ Payment confirmed, assigning leads...");
+        console.log("📊 Quantity purchased:", quantity);
+
+        await autoAssignLeads(quantity);
+
+        // 🧠 Mark this session as processed
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+
+        await supabase.from("Processed_Sessions").insert([
+          { session_id: sessionId, contractor_id: userId },
+        ]);
+
+        setStatus("success");
+      } else {
+        setStatus("failed");
+      }
+    };
+
+    verifyAndAssign();
+  }, [searchParams]);
+
+  
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center px-4 relative overflow-hidden">
       <div className="text-center max-w-lg w-full relative z-10">
@@ -50,7 +112,7 @@ export default function SuccessPage() {
 
           {/* Action Button */}
           <button
-            onClick={() => router.push("/contractor/purchase-leads")}
+            onClick={() => router.push("/contractor/leads")}
             className="w-full bg-[#122E5F] hover:bg-[#0f2347] text-white py-4 px-8 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transform transition-all duration-300 hover:scale-105 active:scale-95 relative overflow-hidden group"
           >
             <span className="relative z-10 flex items-center justify-center">
@@ -61,5 +123,17 @@ export default function SuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#122E5F]"></div>
+      </div>
+    }>
+      <SuccessContent />
+    </Suspense>
   );
 }
