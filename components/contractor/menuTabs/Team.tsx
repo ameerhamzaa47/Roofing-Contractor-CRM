@@ -63,14 +63,17 @@ export const Team = () => {
 
   const handleFormSubmit = async (formData: Record<string, any>) => {
     console.log('Form submitted with data:', formData);
-    const userId = localStorage.getItem("user_id");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!userId) {
       toast.error("User not logged in");
       return;
     }
     const { error } = await supabase.from("Team_Members").insert([
       {
-        user_id: userId,
+        user_id: user.id,
         Full_Name: formData.name,
         Email_Address: formData.email,
         Phone_Number: formData.phoneno

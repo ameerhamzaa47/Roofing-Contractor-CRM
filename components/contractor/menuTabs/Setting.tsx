@@ -228,9 +228,11 @@ export const Setting = () => {
 
   const handleFormSubmit = async (formData: Record<string, any>) => {
     try {
-      const userId = localStorage.getItem("user_id");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (!userId) {
+      if (!user) {
         toast.error("User not logged in");
         return;
       }
@@ -241,7 +243,7 @@ export const Setting = () => {
 
       const { error } = await supabase.from("Payment_Method").insert([
         {
-          user_id: userId,
+          user_id: user.id,
           card_holder_name: formData.cardholderName,
           card_last4: card_last4,
           card_brand: formData.cardType,
